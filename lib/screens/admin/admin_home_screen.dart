@@ -7,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/stock_provider.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/stock_data_gate.dart';
 import '../../widgets/section_card.dart';
 import '../../widgets/implant_tile.dart';
 import '../../widgets/request_tile.dart';
@@ -17,19 +18,13 @@ class AdminHomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final stock = context.watch<StockProvider>();
-    final s = stock.state;
-    if (stock.isLoading || s == null) {
-      return const LoadingView(message: 'جاري تحميل البيانات...');
-    }
+    return StockDataGate(
+      builder: (context, s) {
+        final low = s.warehouse
+            .where((i) => i.qty > 0 && i.qty <= i.threshold)
+            .toList();
 
-    final low = s.warehouse
-        .where((i) => i.qty > 0 && i.qty <= i.threshold)
-        .toList();
-
-    return RefreshIndicator(
-      onRefresh: stock.refresh,
-      child: ListView(
+        return ListView(
         padding: const EdgeInsets.all(16),
         children: [
           Text(
@@ -141,7 +136,8 @@ class AdminHomeScreen extends StatelessWidget {
             ),
           const SizedBox(height: 24),
         ],
-      ),
+        );
+      },
     );
   }
 

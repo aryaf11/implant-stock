@@ -35,12 +35,7 @@ class StockRepository {
     );
   }
 
-  Stream<StockState> watchAll() async* {
-    yield await loadAll();
-    await for (final _ in _db.changes) {
-      yield await loadAll();
-    }
-  }
+  Stream<void> get changes => _db.changes;
 
   Future<List<ImplantItem>> _loadWarehouse() async {
     final snap = await _db.doc('warehouseStock');
@@ -58,7 +53,12 @@ class StockRepository {
       map[c.id] = [];
     }
     if (snap == null) return map;
-    final data = snap['data'] as Map<String, dynamic>? ?? {};
+    final dataRaw = snap['data'];
+    final data = dataRaw is Map
+        ? Map<String, dynamic>.from(
+            dataRaw.map((k, v) => MapEntry(k.toString(), v)),
+          )
+        : <String, dynamic>{};
     for (final entry in data.entries) {
       final list = entry.value as List<dynamic>? ?? [];
       map[entry.key] = list

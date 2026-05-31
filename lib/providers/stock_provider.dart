@@ -9,9 +9,9 @@ class StockProvider extends ChangeNotifier {
 
   final StockRepository _repo;
   StockState? _state;
-  bool _loading = true;
+  bool _loading = false;
   String? _error;
-  StreamSubscription<StockState>? _sub;
+  StreamSubscription<void>? _sub;
 
   StockState? get state => _state;
   bool get isLoading => _loading;
@@ -19,21 +19,8 @@ class StockProvider extends ChangeNotifier {
 
   void startListening() {
     _sub?.cancel();
-    _loading = true;
-    notifyListeners();
-    _sub = _repo.watchAll().listen(
-      (s) {
-        _state = s;
-        _loading = false;
-        _error = null;
-        notifyListeners();
-      },
-      onError: (e) {
-        _error = e.toString();
-        _loading = false;
-        notifyListeners();
-      },
-    );
+    _loadOnce();
+    _sub = _repo.changes.listen((_) => _loadOnce());
   }
 
   void stopListening() {
@@ -41,18 +28,29 @@ class StockProvider extends ChangeNotifier {
     _sub = null;
   }
 
-  Future<void> refresh() async {
+  Future<void> _loadOnce() async {
+    _loading = _state == null;
+    notifyListeners();
     try {
       _state = await _repo.loadAll();
       _error = null;
-    } catch (e) {
-      _error = e.toString();
+    } catch (e, st) {
+      _error = e.toString().replaceFirst('Exception: ', '');
+      if (kDebugMode) {
+        debugPrint('[StockProvider] $e\n$st');
+      }
+    } finally {
+      _loading = false;
+      notifyListeners();
     }
-    notifyListeners();
+  }
+
+  Future<void> refresh() async {
+    await _loadOnce();
   }
 
   Future<String?> run(Future<void> Function(StockState) action) async {
-    if (_state == null) return 'لا توجد بيانات';
+    if (_state == null) return _error ?? 'لا توجد بيانات';
     try {
       await action(_state!);
       notifyListeners();
