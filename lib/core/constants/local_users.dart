@@ -1,0 +1,70 @@
+import '../models/app_user.dart';
+
+/// الحسابات المحلية — أدمن + 4 فروع (بدون Firebase).
+class LocalUser {
+  const LocalUser({
+    required this.username,
+    required this.password,
+    required this.displayName,
+    required this.role,
+    this.centerId,
+  });
+
+  final String username;
+  final String password;
+  final String displayName;
+  final UserRole role;
+  final String? centerId;
+
+  AppUser toAppUser() => AppUser(
+        username: username,
+        displayName: displayName,
+        role: role,
+        centerId: centerId,
+      );
+}
+
+const kLocalUsers = <LocalUser>[
+  LocalUser(
+    username: 'admin',
+    password: '1387raghad',
+    displayName: 'مسؤول المستودع',
+    role: UserRole.admin,
+  ),
+  LocalUser(
+    username: 'branch1',
+    password: 'branch1@123',
+    displayName: 'مشرف الفرع الأول',
+    role: UserRole.supervisor,
+    centerId: 'branch1',
+  ),
+  LocalUser(
+    username: 'branch2',
+    password: 'branch2@123',
+    displayName: 'مشرف الفرع الثاني',
+    role: UserRole.supervisor,
+    centerId: 'branch2',
+  ),
+  LocalUser(
+    username: 'branch3',
+    password: 'branch3@123',
+    displayName: 'مشرف الفرع الثالث',
+    role: UserRole.supervisor,
+    centerId: 'branch3',
+  ),
+  LocalUser(
+    username: 'branch4',
+    password: 'branch4@123',
+    displayName: 'مشرف الفرع الرابع',
+    role: UserRole.supervisor,
+    centerId: 'branch4',
+  ),
+];
+
+LocalUser? findLocalUser(String username) {
+  final name = username.trim();
+  for (final u in kLocalUsers) {
+    if (u.username == name) return u;
+  }
+  return null;
+}
