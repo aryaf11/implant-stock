@@ -10,13 +10,15 @@ class RequestTile extends StatelessWidget {
     required this.onApprove,
     required this.onReject,
     this.isReturn = false,
+    this.isBusy = false,
   });
 
   final String title;
   final String subtitle;
-  final VoidCallback onApprove;
-  final VoidCallback onReject;
+  final VoidCallback? onApprove;
+  final VoidCallback? onReject;
   final bool isReturn;
+  final bool isBusy;
 
   @override
   Widget build(BuildContext context) {
@@ -68,21 +70,31 @@ class RequestTile extends StatelessWidget {
                 ],
               ),
             ),
-            Column(
-              children: [
-                _ActionBtn(
-                  icon: Icons.check_rounded,
-                  color: AppColors.success,
-                  onTap: onApprove,
+            if (isBusy)
+              const Padding(
+                padding: EdgeInsets.all(12),
+                child: SizedBox(
+                  width: 28,
+                  height: 28,
+                  child: CircularProgressIndicator(strokeWidth: 2.5),
                 ),
-                const SizedBox(height: 6),
-                _ActionBtn(
-                  icon: Icons.close_rounded,
-                  color: AppColors.danger,
-                  onTap: onReject,
-                ),
-              ],
-            ),
+              )
+            else
+              Column(
+                children: [
+                  _ActionBtn(
+                    icon: Icons.check_rounded,
+                    color: AppColors.success,
+                    onTap: onApprove,
+                  ),
+                  const SizedBox(height: 6),
+                  _ActionBtn(
+                    icon: Icons.close_rounded,
+                    color: AppColors.danger,
+                    onTap: onReject,
+                  ),
+                ],
+              ),
           ],
         ),
       ),
@@ -99,7 +111,7 @@ class _ActionBtn extends StatelessWidget {
 
   final IconData icon;
   final Color color;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {

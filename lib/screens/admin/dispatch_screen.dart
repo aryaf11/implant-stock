@@ -60,25 +60,33 @@ class _DispatchScreenState extends State<DispatchScreen> {
   }
 
   Future<void> _approve(String id, bool isReturn) async {
-    final repo = context.read<StockRepository>();
-    final provider = context.read<StockProvider>();
-    final err = await provider.run((s) => isReturn
-        ? repo.approveReturn(s, id)
-        : repo.approveRequest(s, id));
-    if (err != null) _snack(err);
+    final stock = context.read<StockProvider>();
+    final err = isReturn
+        ? await stock.approveReturn(id)
+        : await stock.approveRequest(id);
+    if (err != null) {
+      _snack(err);
+    } else {
+      _snack('تمت الموافقة', ok: true);
+    }
   }
 
   Future<void> _reject(String id, bool isReturn) async {
-    final repo = context.read<StockRepository>();
-    final err = await context.read<StockProvider>().run((s) => isReturn
-        ? repo.rejectReturn(s, id)
-        : repo.rejectRequest(s, id));
-    if (err != null) _snack(err);
+    final stock = context.read<StockProvider>();
+    final err = isReturn
+        ? await stock.rejectReturn(id)
+        : await stock.rejectRequest(id);
+    if (err != null) {
+      _snack(err);
+    } else {
+      _snack('تم الرفض', ok: true);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final s = context.watch<StockProvider>().state;
+    final stock = context.watch<StockProvider>();
+    final s = stock.state;
     if (s == null) return const Center(child: CircularProgressIndicator());
 
     final items = s.warehouse.where((i) => i.qty > 0).toList();
@@ -139,10 +147,13 @@ class _DispatchScreenState extends State<DispatchScreen> {
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         ...s.pendingRequests.map(
           (r) => RequestTile(
+            key: ValueKey('req_${r.id}'),
             title: r.fullName,
             subtitle: '${centerNameAr(r.centerId)} | ${r.qty}',
-            onApprove: () => _approve(r.id, false),
-            onReject: () => _reject(r.id, false),
+            isBusy: stock.isBusy(r.id),
+            onApprove:
+                stock.isBusy(r.id) ? null : () => _approve(r.id, false),
+            onReject: stock.isBusy(r.id) ? null : () => _reject(r.id, false),
           ),
         ),
         const SizedBox(height: 16),
@@ -150,10 +161,14 @@ class _DispatchScreenState extends State<DispatchScreen> {
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
         ...s.pendingReturnRequests.map(
           (r) => RequestTile(
+            key: ValueKey('ret_${r.id}'),
             title: r.fullName,
             subtitle: '${centerNameAr(r.centerId)} | ${r.qty}',
-            onApprove: () => _approve(r.id, true),
-            onReject: () => _reject(r.id, true),
+            isBusy: stock.isBusy('ret_${r.id}'),
+            onApprove:
+                stock.isBusy('ret_${r.id}') ? null : () => _approve(r.id, true),
+            onReject:
+                stock.isBusy('ret_${r.id}') ? null : () => _reject(r.id, true),
           ),
         ),
       ],

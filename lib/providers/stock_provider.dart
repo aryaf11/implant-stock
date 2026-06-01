@@ -11,12 +11,16 @@ class StockProvider extends ChangeNotifier {
   StockState? _state;
   bool _loading = false;
   String? _error;
+  String? _busyActionId;
   StreamSubscription<void>? _sub;
   bool _suppressReload = false;
 
   StockState? get state => _state;
   bool get isLoading => _loading;
   String? get error => _error;
+  String? get busyActionId => _busyActionId;
+
+  bool isBusy(String id) => _busyActionId == id;
 
   void startListening() {
     _sub?.cancel();
@@ -52,7 +56,31 @@ class StockProvider extends ChangeNotifier {
     await _loadOnce();
   }
 
-  /// تنفيذ عملية ثم إعادة تحميل البيانات لتحديث الواجهة فوراً.
+  Future<String?> approveRequest(String requestId) =>
+      _runBusy(requestId, (s) => _repo.approveRequest(s, requestId));
+
+  Future<String?> rejectRequest(String requestId) =>
+      _runBusy(requestId, (s) => _repo.rejectRequest(s, requestId));
+
+  Future<String?> approveReturn(String requestId) =>
+      _runBusy('ret_$requestId', (s) => _repo.approveReturn(s, requestId));
+
+  Future<String?> rejectReturn(String requestId) =>
+      _runBusy('ret_$requestId', (s) => _repo.rejectReturn(s, requestId));
+
+  Future<String?> _runBusy(
+    String busyId,
+    Future<void> Function(StockState) action,
+  ) async {
+    if (_state == null) return _error ?? 'لا توجد بيانات';
+    _busyActionId = busyId;
+    notifyListeners();
+    final result = await run(action);
+    _busyActionId = null;
+    notifyListeners();
+    return result;
+  }
+
   Future<String?> run(Future<void> Function(StockState) action) async {
     if (_state == null) return _error ?? 'لا توجد بيانات';
     _suppressReload = true;
@@ -63,7 +91,9 @@ class StockProvider extends ChangeNotifier {
       notifyListeners();
       return null;
     } catch (e) {
-      _state = await _repo.loadAll();
+      try {
+        _state = await _repo.loadAll();
+      } catch (_) {}
       notifyListeners();
       return e.toString().replaceFirst('Exception: ', '');
     } finally {

@@ -1,3 +1,5 @@
+import '../constants/app_constants.dart';
+
 class ReturnRequest {
   ReturnRequest({
     required this.id,
@@ -48,7 +50,7 @@ class ReturnRequest {
 
   factory ReturnRequest.fromMap(Map<String, dynamic> m) => ReturnRequest(
         id: m['id'] as String? ?? '',
-        centerId: m['center'] as String? ?? '',
+        centerId: resolveCenterId(m['center'] as String? ?? ''),
         brand: m['brand'] as String? ?? '',
         itemType: m['itemType'] as String? ?? '',
         size: m['size'] as String? ?? '',

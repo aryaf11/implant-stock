@@ -1,3 +1,5 @@
+import '../constants/app_constants.dart';
+
 class StockRequest {
   StockRequest({
     required this.id,
@@ -41,7 +43,7 @@ class StockRequest {
 
   factory StockRequest.fromMap(Map<String, dynamic> m) => StockRequest(
         id: m['id'] as String? ?? '',
-        centerId: m['center'] as String? ?? '',
+        centerId: resolveCenterId(m['center'] as String? ?? ''),
         brand: m['brand'] as String? ?? '',
         type: m['type'] as String? ?? '',
         size: m['size'] as String? ?? '',

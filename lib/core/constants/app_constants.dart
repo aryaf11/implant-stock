@@ -12,8 +12,23 @@ const kCenters = <CenterInfo>[
   CenterInfo(id: 'branch4', nameAr: 'الفرع الرابع'),
 ];
 
-String centerNameAr(String centerId) =>
-    kCenters.firstWhere((c) => c.id == centerId, orElse: () => kCenters.first).nameAr;
+/// يحوّل معرّف الفرع أو اسمه العربي إلى branch1 … branch4
+String resolveCenterId(String raw) {
+  final v = raw.trim();
+  if (v.isEmpty) return kCenters.first.id;
+  for (final c in kCenters) {
+    if (c.id == v || c.nameAr == v) return c.id;
+  }
+  return v;
+}
+
+String centerNameAr(String centerId) {
+  final id = resolveCenterId(centerId);
+  for (final c in kCenters) {
+    if (c.id == id) return c.nameAr;
+  }
+  return centerId;
+}
 
 /// الشركات الثلاث وأنواعها ومقاساتها.
 class BrandCatalog {

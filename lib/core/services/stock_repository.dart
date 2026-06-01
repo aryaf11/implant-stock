@@ -284,19 +284,34 @@ class StockRepository {
     await _persist(state);
   }
 
+  ImplantItem? _warehouseForRequest(StockState state, StockRequest r) {
+    if (r.warehouseItemId.isNotEmpty) {
+      for (final i in state.warehouse) {
+        if (i.id == r.warehouseItemId) return i;
+      }
+    }
+    for (final i in state.warehouse) {
+      if (i.brand == r.brand && i.type == r.type && i.size == r.size) {
+        return i;
+      }
+    }
+    return null;
+  }
+
   Future<void> approveRequest(StockState state, String requestId) async {
-    final r = state.requests.firstWhere((x) => x.id == requestId);
-    final wh = state.warehouse.where(
-      (i) => i.brand == r.brand && i.type == r.type && i.size == r.size,
-    );
-    if (wh.isEmpty || wh.first.qty < r.qty) {
+    final idx = state.requests.indexWhere((x) => x.id == requestId);
+    if (idx < 0) throw Exception('الطلب غير موجود');
+    final r = state.requests[idx];
+    final centerId = resolveCenterId(r.centerId);
+
+    final item = _warehouseForRequest(state, r);
+    if (item == null || item.qty < r.qty) {
       throw Exception('لا توجد كمية كافية في المستودع');
     }
-    final item = wh.first;
     item.qty -= r.qty;
     if (item.qty == 0) state.warehouse.remove(item);
 
-    final centerList = state.centers[r.centerId]!;
+    final centerList = state.centers[centerId] ??= [];
     final ce = centerList.where(
       (i) => i.type == r.type && i.brand == r.brand && i.size == r.size,
     );
@@ -309,10 +324,12 @@ class StockRepository {
         type: r.type,
         size: r.size,
         qty: r.qty,
+        lot: item.lot,
+        expiry: item.expiry,
       ));
     }
 
-    r.status = 'approved';
+    state.requests.removeAt(idx);
     _log(
       state,
       MovementLog(
@@ -320,8 +337,8 @@ class StockRepository {
         op: 'صرف',
         type: r.fullName,
         qty: r.qty,
-        detail: 'إلى ${centerNameAr(r.centerId)} (موافقة طلب)',
-        center: r.centerId,
+        detail: 'إلى ${centerNameAr(centerId)} (موافقة طلب)',
+        center: centerId,
         brand: r.brand,
         size: r.size,
         note: r.note,
@@ -331,14 +348,18 @@ class StockRepository {
   }
 
   Future<void> rejectRequest(StockState state, String requestId) async {
-    final r = state.requests.firstWhere((x) => x.id == requestId);
-    r.status = 'rejected';
+    final idx = state.requests.indexWhere((x) => x.id == requestId);
+    if (idx < 0) throw Exception('الطلب غير موجود');
+    state.requests.removeAt(idx);
     await _persist(state);
   }
 
   Future<void> approveReturn(StockState state, String requestId) async {
-    final r = state.returnRequests.firstWhere((x) => x.id == requestId);
-    final list = state.centers[r.centerId]!;
+    final rIdx = state.returnRequests.indexWhere((x) => x.id == requestId);
+    if (rIdx < 0) throw Exception('الطلب غير موجود');
+    final r = state.returnRequests[rIdx];
+    final centerId = resolveCenterId(r.centerId);
+    final list = state.centers[centerId] ??= [];
     final idx = list.indexWhere((i) => i.id == r.itemId);
     if (idx < 0) throw Exception('الصنف غير موجود في المركز');
     final item = list[idx];
@@ -368,7 +389,7 @@ class StockRepository {
       ));
     }
 
-    r.status = 'approved';
+    state.returnRequests.removeAt(rIdx);
     _log(
       state,
       MovementLog(
@@ -376,8 +397,8 @@ class StockRepository {
         op: 'استرجاع',
         type: r.fullName,
         qty: r.qty,
-        detail: 'من ${centerNameAr(r.centerId)} (موافقة)',
-        center: r.centerId,
+        detail: 'من ${centerNameAr(centerId)} (موافقة)',
+        center: centerId,
         brand: r.brand,
         size: r.size,
         note: r.reason,
@@ -387,8 +408,9 @@ class StockRepository {
   }
 
   Future<void> rejectReturn(StockState state, String requestId) async {
-    final r = state.returnRequests.firstWhere((x) => x.id == requestId);
-    r.status = 'rejected';
+    final rIdx = state.returnRequests.indexWhere((x) => x.id == requestId);
+    if (rIdx < 0) throw Exception('الطلب غير موجود');
+    state.returnRequests.removeAt(rIdx);
     await _persist(state);
   }
 
@@ -529,11 +551,13 @@ class StockState {
   List<StockRequest> requests;
   List<ReturnRequest> returnRequests;
 
-  List<StockRequest> get pendingRequests =>
-      requests.where((r) => r.status == 'pending').toList();
+  List<StockRequest> get pendingRequests => requests
+      .where((r) => r.status.trim().toLowerCase() == 'pending')
+      .toList();
 
-  List<ReturnRequest> get pendingReturnRequests =>
-      returnRequests.where((r) => r.status == 'pending').toList();
+  List<ReturnRequest> get pendingReturnRequests => returnRequests
+      .where((r) => r.status.trim().toLowerCase() == 'pending')
+      .toList();
 
   int get totalWarehouseQty => warehouse.fold<int>(0, (s, i) => s + i.qty);
 
