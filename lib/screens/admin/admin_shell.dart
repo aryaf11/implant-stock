@@ -9,7 +9,9 @@ import 'admin_home_screen.dart';
 import 'centers_inventory_screen.dart';
 import 'dispatch_screen.dart';
 import 'log_screen.dart';
+import 'reports_screen.dart';
 import 'return_wh_screen.dart';
+import 'users_screen.dart';
 import 'warehouse_inventory_screen.dart';
 
 class AdminShell extends StatefulWidget {
@@ -56,9 +58,20 @@ class _AdminShellState extends State<AdminShell> {
       label: 'مخزون الفروع',
     ),
     NavDestination(
+      icon: Icons.analytics_outlined,
+      selectedIcon: Icons.analytics,
+      label: 'التقارير',
+      subtitle: 'صرف أسبوعي وشهري',
+    ),
+    NavDestination(
       icon: Icons.history_outlined,
       selectedIcon: Icons.history,
       label: 'السجل',
+    ),
+    NavDestination(
+      icon: Icons.manage_accounts_outlined,
+      selectedIcon: Icons.manage_accounts,
+      label: 'المستخدمين',
     ),
   ];
 
@@ -69,7 +82,9 @@ class _AdminShellState extends State<AdminShell> {
     ReturnWhScreen(),
     WarehouseInventoryScreen(),
     CentersInventoryScreen(),
+    ReportsScreen(),
     LogScreen(),
+    UsersScreen(),
   ];
 
   @override

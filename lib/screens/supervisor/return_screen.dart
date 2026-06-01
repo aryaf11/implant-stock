@@ -31,7 +31,7 @@ class _ReturnScreenState extends State<ReturnScreen> {
     if (_item == null) return;
     final q = int.tryParse(_qty.text);
     if (q == null || q < 1) return;
-    final repo = StockRepository();
+    final repo = context.read<StockRepository>();
     final err = await context.read<StockProvider>().run(
           (s) => repo.submitReturnRequest(
             s,

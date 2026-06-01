@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'core/models/app_user.dart';
 import 'core/services/auth_service.dart';
 import 'core/services/stock_repository.dart';
+import 'core/services/user_repository.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/stock_provider.dart';
@@ -20,7 +21,10 @@ class ImplantStockApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        Provider(create: (_) => AuthService()),
+        Provider(create: (_) => UserRepository.instance),
+        Provider(
+          create: (ctx) => AuthService(ctx.read<UserRepository>()),
+        ),
         Provider(create: (_) => StockRepository()),
         ChangeNotifierProvider(
           create: (ctx) => AuthProvider(ctx.read<AuthService>()),

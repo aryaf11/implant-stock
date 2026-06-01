@@ -34,7 +34,7 @@ class _RequestScreenState extends State<RequestScreen> {
       _snack('أدخل كمية صحيحة');
       return;
     }
-    final repo = StockRepository();
+    final repo = context.read<StockRepository>();
     final err = await context.read<StockProvider>().run(
           (s) => repo.sendRequest(
             s,

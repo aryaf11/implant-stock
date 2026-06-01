@@ -40,7 +40,7 @@ class _ReturnWhScreenState extends State<ReturnWhScreen> {
       );
       return;
     }
-    final repo = StockRepository();
+    final repo = context.read<StockRepository>();
     final err = await context.read<StockProvider>().run(
           (s) => repo.returnFromCenter(
             s,

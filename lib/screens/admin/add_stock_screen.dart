@@ -50,7 +50,7 @@ class _AddStockScreenState extends State<AddStockScreen> {
       return;
     }
 
-    final repo = StockRepository();
+    final repo = context.read<StockRepository>();
     final err = await context.read<StockProvider>().run(
           (s) => repo.addToWarehouse(
             s,

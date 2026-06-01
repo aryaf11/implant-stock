@@ -34,7 +34,7 @@ class _DispatchScreenState extends State<DispatchScreen> {
       _snack('أدخل كمية صحيحة');
       return;
     }
-    final repo = StockRepository();
+    final repo = context.read<StockRepository>();
     final err = await context.read<StockProvider>().run(
           (s) => repo.dispatchToCenter(
             s,
@@ -60,7 +60,7 @@ class _DispatchScreenState extends State<DispatchScreen> {
   }
 
   Future<void> _approve(String id, bool isReturn) async {
-    final repo = StockRepository();
+    final repo = context.read<StockRepository>();
     final provider = context.read<StockProvider>();
     final err = await provider.run((s) => isReturn
         ? repo.approveReturn(s, id)
@@ -69,7 +69,7 @@ class _DispatchScreenState extends State<DispatchScreen> {
   }
 
   Future<void> _reject(String id, bool isReturn) async {
-    final repo = StockRepository();
+    final repo = context.read<StockRepository>();
     final err = await context.read<StockProvider>().run((s) => isReturn
         ? repo.rejectReturn(s, id)
         : repo.rejectRequest(s, id));

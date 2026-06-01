@@ -146,7 +146,7 @@ class AdminHomeScreen extends StatelessWidget {
     Future<void> Function(StockRepository, StockState) fn,
   ) async {
     final provider = context.read<StockProvider>();
-    final repo = StockRepository();
+    final repo = context.read<StockRepository>();
     final err = await provider.run((st) => fn(repo, st));
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
