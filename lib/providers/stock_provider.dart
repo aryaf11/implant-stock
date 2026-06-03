@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../core/services/stock_repository.dart';
 
 class StockProvider extends ChangeNotifier {
-  StockProvider(this._repo);
+  StockProvider(this._repo, {StockState? initialState}) : _state = initialState;
 
   final StockRepository _repo;
   StockState? _state;
@@ -24,7 +24,9 @@ class StockProvider extends ChangeNotifier {
 
   void startListening() {
     _sub?.cancel();
-    _loadOnce();
+    if (_state == null) {
+      _loadOnce();
+    }
     _sub = _repo.changes.listen((_) {
       if (!_suppressReload) _loadOnce(silent: true);
     });
@@ -55,7 +57,7 @@ class StockProvider extends ChangeNotifier {
   }
 
   Future<void> refresh() async {
-    await _loadOnce();
+    await _loadOnce(silent: _state != null);
   }
 
   Future<String?> approveRequest(String requestId) =>
@@ -83,7 +85,6 @@ class StockProvider extends ChangeNotifier {
     return result;
   }
 
-  /// ينفّذ العملية ويحدّث الواجهة من الذاكرة مباشرة (بدون إعادة قراءة قديمة من التخزين).
   Future<String?> run(Future<void> Function(StockState) action) async {
     if (_state == null) return _error ?? 'لا توجد بيانات';
     _suppressReload = true;

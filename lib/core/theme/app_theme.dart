@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -8,12 +9,7 @@ class AppTheme {
   static const primaryLight = AppColors.primaryLight;
 
   static ThemeData light() {
-    final textTheme = GoogleFonts.tajawalTextTheme().apply(
-      bodyColor: const Color(0xFF1A202C),
-      displayColor: const Color(0xFF1A202C),
-    );
-
-    return ThemeData(
+    final base = ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
       scaffoldBackgroundColor: AppColors.surface,
@@ -23,6 +19,21 @@ class AppTheme {
         secondary: AppColors.accent,
         surface: AppColors.surface,
       ),
+    );
+
+    // على الويب: خط Tajawal من index.html (بدون تحميل إضافي من التطبيق)
+    final textTheme = kIsWeb
+        ? base.textTheme.apply(
+            bodyColor: const Color(0xFF1A202C),
+            displayColor: const Color(0xFF1A202C),
+            fontFamily: 'Tajawal',
+          )
+        : GoogleFonts.tajawalTextTheme(base.textTheme).apply(
+            bodyColor: const Color(0xFF1A202C),
+            displayColor: const Color(0xFF1A202C),
+          );
+
+    return base.copyWith(
       textTheme: textTheme,
       appBarTheme: AppBarTheme(
         elevation: 0,
@@ -72,8 +83,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: primary, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        labelStyle: textTheme.bodyMedium?.copyWith(color: const Color(0xFF4A5568)),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        labelStyle:
+            textTheme.bodyMedium?.copyWith(color: const Color(0xFF4A5568)),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -81,7 +94,8 @@ class AppTheme {
           foregroundColor: Colors.white,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           textStyle: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
         ),
       ),
@@ -89,7 +103,8 @@ class AppTheme {
         style: FilledButton.styleFrom(
           backgroundColor: primary,
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
       snackBarTheme: SnackBarThemeData(

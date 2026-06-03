@@ -99,6 +99,8 @@ class LocalDatabase {
     await _box!.putAll(_memoryCache!);
   }
 
+  Map<String, dynamic> readSnapshot() => _readAllDocs();
+
   Future<Map<String, dynamic>?> doc(String key) async {
     final all = _readAllDocs();
     return all[key];

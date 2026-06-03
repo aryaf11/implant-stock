@@ -15,22 +15,32 @@ import 'screens/supervisor/supervisor_shell.dart';
 import 'widgets/empty_state.dart';
 
 class ImplantStockApp extends StatelessWidget {
-  const ImplantStockApp({super.key});
+  const ImplantStockApp({
+    super.key,
+    required this.stockRepository,
+    this.initialStock,
+  });
+
+  final StockRepository stockRepository;
+  final StockState? initialStock;
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
         Provider(create: (_) => UserRepository.instance),
+        Provider(create: (_) => stockRepository),
         Provider(
           create: (ctx) => AuthService(ctx.read<UserRepository>()),
         ),
-        Provider(create: (_) => StockRepository()),
         ChangeNotifierProvider(
           create: (ctx) => AuthProvider(ctx.read<AuthService>()),
         ),
         ChangeNotifierProvider(
-          create: (ctx) => StockProvider(ctx.read<StockRepository>()),
+          create: (ctx) => StockProvider(
+            ctx.read<StockRepository>(),
+            initialState: initialStock,
+          ),
         ),
       ],
       child: MaterialApp(
@@ -64,9 +74,8 @@ class _RootRouterState extends State<_RootRouter> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (mounted) {
-        await context.read<AuthProvider>().tryRestoreSession();
-      }
+      if (!mounted) return;
+      await context.read<AuthProvider>().tryRestoreSession();
     });
   }
 

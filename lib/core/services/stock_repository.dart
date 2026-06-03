@@ -21,11 +21,49 @@ class StockRepository {
       _uuid.v4().substring(0, 5);
 
   Future<StockState> loadAll() async {
-    final warehouse = await _loadWarehouse();
-    final centers = await _loadCenters();
-    final log = await _loadLog();
-    final reqs = await _loadRequests();
-    final returns = await _loadReturnRequests();
+    final snap = _db.readSnapshot();
+    return _stateFromSnapshot(snap);
+  }
+
+  StockState _stateFromSnapshot(Map<String, dynamic> snap) {
+    final warehouseSnap = snap['warehouseStock'];
+    final warehouse = warehouseSnap is Map
+        ? ((warehouseSnap['items'] as List<dynamic>? ?? [])
+            .map((e) =>
+                ImplantItem.fromMap(Map<String, dynamic>.from(e as Map)))
+            .toList())
+        : <ImplantItem>[];
+
+    final centers = _parseCenters(
+      snap['centerStock'] is Map ? snap['centerStock'] as Map : null,
+    );
+
+    final logSnap = snap['movementLog'];
+    final log = logSnap is Map
+        ? ((logSnap['items'] as List<dynamic>? ?? [])
+            .map((e) =>
+                MovementLog.fromMap(Map<String, dynamic>.from(e as Map)))
+            .toList())
+        : <MovementLog>[];
+
+    final reqSnap = snap['requests'];
+    final reqs = reqSnap is Map
+        ? ((reqSnap['items'] as List<dynamic>? ?? [])
+            .map((e) =>
+                StockRequest.fromMap(Map<String, dynamic>.from(e as Map)))
+            .where((r) => r.status.trim().toLowerCase() == 'pending')
+            .toList())
+        : <StockRequest>[];
+
+    final retSnap = snap['returnRequests'];
+    final returns = retSnap is Map
+        ? ((retSnap['items'] as List<dynamic>? ?? [])
+            .map((e) =>
+                ReturnRequest.fromMap(Map<String, dynamic>.from(e as Map)))
+            .where((r) => r.status.trim().toLowerCase() == 'pending')
+            .toList())
+        : <ReturnRequest>[];
+
     return StockState(
       warehouse: warehouse,
       centers: centers,
@@ -35,33 +73,17 @@ class StockRepository {
     );
   }
 
-  Stream<void> get changes => _db.changes;
-
-  Future<List<ImplantItem>> _loadWarehouse() async {
-    final snap = await _db.doc('warehouseStock');
-    if (snap == null) return [];
-    final items = snap['items'] as List<dynamic>? ?? [];
-    return items
-        .map((e) => ImplantItem.fromMap(Map<String, dynamic>.from(e as Map)))
-        .toList();
-  }
-
-  Future<Map<String, List<ImplantItem>>> _loadCenters() async {
-    final snap = await _db.doc('centerStock');
+  Map<String, List<ImplantItem>> _parseCenters(Map<dynamic, dynamic>? snap) {
     final map = <String, List<ImplantItem>>{};
     for (final c in kCenters) {
       map[c.id] = [];
     }
     if (snap == null) return map;
-    final dataRaw = snap['data'];
-    final data = dataRaw is Map
-        ? Map<String, dynamic>.from(
-            dataRaw.map((k, v) => MapEntry(k.toString(), v)),
-          )
-        : <String, dynamic>{};
+    final data = snap['data'];
+    if (data is! Map) return map;
     for (final entry in data.entries) {
       final list = entry.value as List<dynamic>? ?? [];
-      map[entry.key] = list
+      map[entry.key.toString()] = list
           .map((e) => ImplantItem.fromMap(Map<String, dynamic>.from(e as Map)))
           .toList();
     }
@@ -71,34 +93,7 @@ class StockRepository {
     return map;
   }
 
-  Future<List<MovementLog>> _loadLog() async {
-    final snap = await _db.doc('movementLog');
-    if (snap == null) return [];
-    final items = snap['items'] as List<dynamic>? ?? [];
-    return items
-        .map((e) => MovementLog.fromMap(Map<String, dynamic>.from(e as Map)))
-        .toList();
-  }
-
-  Future<List<StockRequest>> _loadRequests() async {
-    final snap = await _db.doc('requests');
-    if (snap == null) return [];
-    final items = snap['items'] as List<dynamic>? ?? [];
-    return items
-        .map((e) => StockRequest.fromMap(Map<String, dynamic>.from(e as Map)))
-        .where((r) => r.status.trim().toLowerCase() == 'pending')
-        .toList();
-  }
-
-  Future<List<ReturnRequest>> _loadReturnRequests() async {
-    final snap = await _db.doc('returnRequests');
-    if (snap == null) return [];
-    final items = snap['items'] as List<dynamic>? ?? [];
-    return items
-        .map((e) => ReturnRequest.fromMap(Map<String, dynamic>.from(e as Map)))
-        .where((r) => r.status.trim().toLowerCase() == 'pending')
-        .toList();
-  }
+  Stream<void> get changes => _db.changes;
 
   Future<void> _persist(StockState state) async {
     final ts = DateTime.now().millisecondsSinceEpoch;
