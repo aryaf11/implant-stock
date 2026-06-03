@@ -86,6 +86,7 @@ class StockRepository {
     final items = snap['items'] as List<dynamic>? ?? [];
     return items
         .map((e) => StockRequest.fromMap(Map<String, dynamic>.from(e as Map)))
+        .where((r) => r.status.trim().toLowerCase() == 'pending')
         .toList();
   }
 
@@ -95,6 +96,7 @@ class StockRepository {
     final items = snap['items'] as List<dynamic>? ?? [];
     return items
         .map((e) => ReturnRequest.fromMap(Map<String, dynamic>.from(e as Map)))
+        .where((r) => r.status.trim().toLowerCase() == 'pending')
         .toList();
   }
 

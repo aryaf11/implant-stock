@@ -26,7 +26,7 @@ class StockProvider extends ChangeNotifier {
     _sub?.cancel();
     _loadOnce();
     _sub = _repo.changes.listen((_) {
-      if (!_suppressReload) _loadOnce();
+      if (!_suppressReload) _loadOnce(silent: true);
     });
   }
 
@@ -35,9 +35,11 @@ class StockProvider extends ChangeNotifier {
     _sub = null;
   }
 
-  Future<void> _loadOnce() async {
-    _loading = _state == null;
-    notifyListeners();
+  Future<void> _loadOnce({bool silent = false}) async {
+    if (!silent) {
+      _loading = _state == null;
+      notifyListeners();
+    }
     try {
       _state = await _repo.loadAll();
       _error = null;
@@ -81,12 +83,12 @@ class StockProvider extends ChangeNotifier {
     return result;
   }
 
+  /// ينفّذ العملية ويحدّث الواجهة من الذاكرة مباشرة (بدون إعادة قراءة قديمة من التخزين).
   Future<String?> run(Future<void> Function(StockState) action) async {
     if (_state == null) return _error ?? 'لا توجد بيانات';
     _suppressReload = true;
     try {
       await action(_state!);
-      _state = await _repo.loadAll();
       _error = null;
       notifyListeners();
       return null;

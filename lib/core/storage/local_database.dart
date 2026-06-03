@@ -17,6 +17,7 @@ class LocalDatabase {
 
   Box<dynamic>? _box;
   SharedPreferences? _prefs;
+  Map<String, dynamic>? _memoryCache;
   final _changes = StreamController<void>.broadcast();
 
   Stream<void> get changes => _changes.stream;
@@ -26,6 +27,7 @@ class LocalDatabase {
   Future<void> init() async {
     if (_useWebPrefs) {
       _prefs = await SharedPreferences.getInstance();
+      _memoryCache = _readFromPrefs();
       if (!_prefs!.containsKey(_webKey)) {
         await seedEmpty();
       }
@@ -55,21 +57,22 @@ class LocalDatabase {
 
   Future<void> seedEmpty() async {
     final state = _emptyState();
-    if (_useWebPrefs) {
-      await _prefs!.setString(_webKey, jsonEncode(state));
-    } else {
-      await _box!.putAll(state);
-    }
+    await _writeAll(state);
     _notify();
+  }
+
+  Map<String, dynamic> _readFromPrefs() {
+    final raw = _prefs?.getString(_webKey);
+    if (raw == null || raw.isEmpty) return _emptyState();
+    final decoded = jsonDecode(raw);
+    if (decoded is! Map) return _emptyState();
+    return _deepStringMap(decoded);
   }
 
   Map<String, dynamic> _readAllDocs() {
     if (_useWebPrefs) {
-      final raw = _prefs!.getString(_webKey);
-      if (raw == null || raw.isEmpty) return _emptyState();
-      final decoded = jsonDecode(raw);
-      if (decoded is! Map) return _emptyState();
-      return _deepStringMap(decoded);
+      _memoryCache ??= _readFromPrefs();
+      return Map<String, dynamic>.from(_memoryCache!);
     }
     final out = <String, dynamic>{};
     for (final key in [
@@ -87,19 +90,24 @@ class LocalDatabase {
     return out.isEmpty ? _emptyState() : out;
   }
 
+  Future<void> _writeAll(Map<String, dynamic> all) async {
+    _memoryCache = _deepStringMap(all);
+    if (_useWebPrefs) {
+      await _prefs!.setString(_webKey, jsonEncode(_memoryCache));
+      return;
+    }
+    await _box!.putAll(_memoryCache!);
+  }
+
   Future<Map<String, dynamic>?> doc(String key) async {
     final all = _readAllDocs();
     return all[key];
   }
 
   Future<void> putAll(Map<String, Map<String, dynamic>> docs) async {
-    if (_useWebPrefs) {
-      final all = _readAllDocs();
-      all.addAll(docs);
-      await _prefs!.setString(_webKey, jsonEncode(all));
-    } else {
-      await _box!.putAll(docs);
-    }
+    final all = _readAllDocs();
+    all.addAll(docs);
+    await _writeAll(all);
     _notify();
   }
 
