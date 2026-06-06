@@ -28,7 +28,9 @@ class _UsersScreenState extends State<UsersScreen> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
-    final list = await context.read<UserRepository>().loadAll();
+    final repo = context.read<UserRepository>();
+    await repo.ensureDefaults();
+    final list = await repo.loadAll();
     if (mounted) {
       setState(() {
         _users = list;

@@ -26,8 +26,22 @@ class UserRepository {
   }
 
   /// إضافة حسابات جديدة من الافتراضي دون حذف الموجود.
+  Future<void> ensureDefaults() async {
+    _cache = null;
+    await _mergeMissingDefaults();
+  }
+
   Future<void> _mergeMissingDefaults() async {
-    final all = [...await loadAll()];
+    _prefs ??= await SharedPreferences.getInstance();
+    final raw = _prefs!.getString(_key);
+    List<StoredUser> all;
+    if (raw == null || raw.isEmpty) {
+      await _saveAll(kLocalUsers.map(_fromLocal).toList());
+      return;
+    }
+    all = (jsonDecode(raw) as List<dynamic>)
+        .map((e) => StoredUser.fromMap(Map<String, dynamic>.from(e as Map)))
+        .toList();
     var changed = false;
     for (final u in kLocalUsers) {
       if (all.any((x) => x.username == u.username)) continue;

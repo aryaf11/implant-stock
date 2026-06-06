@@ -1,6 +1,6 @@
 import '../models/app_user.dart';
 
-/// الحسابات المحلية — أدمن + 4 فروع (بدون Firebase).
+/// الحسابات الافتراضية — أدمن + الفروع (تُدمج تلقائياً عند التشغيل).
 class LocalUser {
   const LocalUser({
     required this.username,
