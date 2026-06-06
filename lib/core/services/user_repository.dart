@@ -13,42 +13,46 @@ class UserRepository {
 
   SharedPreferences? _prefs;
   static const _key = 'implant_stock_users_v1';
-  List<StoredUser>? _cache;
 
   Future<void> init() async {
     _prefs ??= await SharedPreferences.getInstance();
-    if (!_prefs!.containsKey(_key)) {
-      await _saveAll(kLocalUsers.map(_fromLocal).toList());
-    } else {
-      await _mergeMissingDefaults();
-    }
-    _cache = null;
+    await _syncDefaults(persistIfMissing: true);
   }
 
   /// إضافة حسابات جديدة من الافتراضي دون حذف الموجود.
   Future<void> ensureDefaults() async {
-    _cache = null;
-    await _mergeMissingDefaults();
+    await _syncDefaults(persistIfMissing: true);
   }
 
-  Future<void> _mergeMissingDefaults() async {
+  bool _hasUsername(List<StoredUser> users, String username) {
+    final name = username.trim().toLowerCase();
+    return users.any((u) => u.username.trim().toLowerCase() == name);
+  }
+
+  Future<List<StoredUser>> _readFromPrefs() async {
     _prefs ??= await SharedPreferences.getInstance();
     final raw = _prefs!.getString(_key);
-    List<StoredUser> all;
     if (raw == null || raw.isEmpty) {
-      await _saveAll(kLocalUsers.map(_fromLocal).toList());
-      return;
+      return kLocalUsers.map(_fromLocal).toList();
     }
-    all = (jsonDecode(raw) as List<dynamic>)
+    return (jsonDecode(raw) as List<dynamic>)
         .map((e) => StoredUser.fromMap(Map<String, dynamic>.from(e as Map)))
         .toList();
+  }
+
+  /// يدمج الحسابات الافتراضية الناقصة ويعيد القائمة الكاملة.
+  Future<List<StoredUser>> _syncDefaults({required bool persistIfMissing}) async {
+    final all = await _readFromPrefs();
     var changed = false;
     for (final u in kLocalUsers) {
-      if (all.any((x) => x.username == u.username)) continue;
+      if (_hasUsername(all, u.username)) continue;
       all.add(_fromLocal(u));
       changed = true;
     }
-    if (changed) await _saveAll(all);
+    if (changed && persistIfMissing) {
+      await _saveAll(all);
+    }
+    return all;
   }
 
   StoredUser _fromLocal(LocalUser u) => StoredUser(
@@ -60,18 +64,8 @@ class UserRepository {
       );
 
   Future<List<StoredUser>> loadAll() async {
-    if (_cache != null) return List.unmodifiable(_cache!);
-    _prefs ??= await SharedPreferences.getInstance();
-    final raw = _prefs!.getString(_key);
-    if (raw == null || raw.isEmpty) {
-      _cache = kLocalUsers.map(_fromLocal).toList();
-      return List.unmodifiable(_cache!);
-    }
-    final list = jsonDecode(raw) as List<dynamic>;
-    _cache = list
-        .map((e) => StoredUser.fromMap(Map<String, dynamic>.from(e as Map)))
-        .toList();
-    return List.unmodifiable(_cache!);
+    final all = await _syncDefaults(persistIfMissing: true);
+    return List.unmodifiable(all);
   }
 
   Future<StoredUser?> findByUsername(String username) async {
@@ -85,11 +79,11 @@ class UserRepository {
 
   Future<void> _saveAll(List<StoredUser> users) async {
     _prefs ??= await SharedPreferences.getInstance();
-    await _prefs!.setString(
-      _key,
-      jsonEncode(users.map((e) => e.toMap()).toList()),
-    );
-    _cache = List.from(users);
+    final payload = jsonEncode(users.map((e) => e.toMap()).toList());
+    final ok = await _prefs!.setString(_key, payload);
+    if (!ok) {
+      throw Exception('تعذر حفظ بيانات المستخدمين في المتصفح');
+    }
   }
 
   Future<void> addUser(StoredUser user) async {

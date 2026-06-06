@@ -30,7 +30,7 @@ jobs:
 
       - run: flutter pub get
 
-      - run: flutter build web --release --base-href "/implant-stock/"
+      - run: flutter build web --release --base-href "/implant-stock/" --pwa-strategy=none
 
       - uses: actions/upload-pages-artifact@v3
         with:
