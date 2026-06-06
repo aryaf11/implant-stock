@@ -105,7 +105,7 @@ class _DispatchScreenState extends State<DispatchScreen> {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<ImplantItem>(
                   value: _item,
-                  decoration: const InputDecoration(labelText: 'الزرعة'),
+                  decoration: const InputDecoration(labelText: 'الصنف'),
                   items: items
                       .map((i) => DropdownMenuItem(
                             value: i,

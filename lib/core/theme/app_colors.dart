@@ -25,6 +25,8 @@ abstract final class AppColors {
         'Straumann' => const Color(0xFF2B6CB0),
         'BioHorizons' => const Color(0xFF276749),
         'Ora' => const Color(0xFFC05621),
+        'ملحقات' => const Color(0xFF6B46C1),
+        'أدوات' => const Color(0xFF2C7A7B),
         _ => const Color(0xFF718096),
       };
 

@@ -49,7 +49,9 @@ class ImplantTile extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '${item.type} · ${item.size}',
+                  item.size == '—' || item.size.isEmpty
+                      ? item.type
+                      : '${item.type} · ${item.size}',
                   style: const TextStyle(fontWeight: FontWeight.w700),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,

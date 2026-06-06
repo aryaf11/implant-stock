@@ -16,9 +16,13 @@ class AddStockScreen extends StatefulWidget {
 }
 
 class _AddStockScreenState extends State<AddStockScreen> {
+  StockCategory _category = kStockCategories.first;
   BrandCatalog? _brand;
   String? _type;
   String? _size;
+  final _customCategory = TextEditingController();
+  final _itemName = TextEditingController();
+  final _itemSpec = TextEditingController();
   final _customSize = TextEditingController();
   final _qty = TextEditingController();
   final _lot = TextEditingController();
@@ -27,6 +31,9 @@ class _AddStockScreenState extends State<AddStockScreen> {
 
   @override
   void dispose() {
+    _customCategory.dispose();
+    _itemName.dispose();
+    _itemSpec.dispose();
     _customSize.dispose();
     _qty.dispose();
     _lot.dispose();
@@ -34,17 +41,55 @@ class _AddStockScreenState extends State<AddStockScreen> {
     super.dispose();
   }
 
+  void _onCategoryChanged(StockCategory category) {
+    setState(() {
+      _category = category;
+      _brand = null;
+      _type = null;
+      _size = null;
+      _customCategory.clear();
+      _itemName.clear();
+      _itemSpec.clear();
+      _customSize.clear();
+    });
+  }
+
   Future<void> _submit() async {
-    final brand = _brand?.name;
-    final type = _type;
-    final size = _customSize.text.trim().isNotEmpty ? _customSize.text.trim() : _size;
+    late final String brand;
+    late final String type;
+    late final String size;
+
+    if (_category.isImplants) {
+      brand = _brand?.name ?? '';
+      type = _type ?? '';
+      size = _customSize.text.trim().isNotEmpty
+          ? _customSize.text.trim()
+          : (_size ?? '');
+      if (brand.isEmpty || type.isEmpty || size.isEmpty) {
+        _msg('يرجى اختيار الشركة والنوع والمقاس');
+        return;
+      }
+    } else {
+      if (_category.id == 'custom') {
+        brand = _customCategory.text.trim();
+        if (brand.isEmpty) {
+          _msg('يرجى إدخال اسم الصنف');
+          return;
+        }
+      } else {
+        brand = _category.storageBrand!;
+      }
+      type = _itemName.text.trim();
+      if (type.isEmpty) {
+        _msg('يرجى إدخال اسم المادة');
+        return;
+      }
+      size = _itemSpec.text.trim().isEmpty ? '—' : _itemSpec.text.trim();
+    }
+
     final qty = int.tryParse(_qty.text);
     final thr = int.tryParse(_threshold.text) ?? 3;
 
-    if (brand == null || type == null || size == null || size.isEmpty) {
-      _msg('يرجى اختيار الشركة والنوع والمقاس');
-      return;
-    }
     if (qty == null || qty < 1) {
       _msg('يرجى إدخال كمية صحيحة');
       return;
@@ -71,6 +116,11 @@ class _AddStockScreenState extends State<AddStockScreen> {
       _msg('تمت الإضافة', ok: true);
       _qty.clear();
       _lot.clear();
+      if (!_category.isImplants) {
+        _itemName.clear();
+        _itemSpec.clear();
+        if (_category.id == 'custom') _customCategory.clear();
+      }
     }
   }
 
@@ -86,80 +136,161 @@ class _AddStockScreenState extends State<AddStockScreen> {
     'Ora': ('🟡', 'أورا'),
   };
 
+  Widget _categorySelector() {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: kStockCategories.map((c) {
+        final selected = _category.id == c.id;
+        return ChoiceChip(
+          label: Text(c.nameAr),
+          selected: selected,
+          selectedColor: AppColors.primary.withValues(alpha: 0.15),
+          checkmarkColor: AppColors.primary,
+          onSelected: (_) => _onCategoryChanged(c),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _implantFields() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            for (final b in kBrands) ...[
+              BrandSelectCard(
+                name: b.name,
+                subtitle: _brandMeta[b.name]?.$2 ?? '',
+                emoji: _brandMeta[b.name]?.$1 ?? '⚪',
+                selected: _brand?.name == b.name,
+                onTap: () => setState(() {
+                  _brand = b;
+                  _type = null;
+                  _size = null;
+                }),
+              ),
+              if (b != kBrands.last) const SizedBox(width: 8),
+            ],
+          ],
+        ),
+        if (_brand != null) ...[
+          const SizedBox(height: 20),
+          DropdownButtonFormField<String>(
+            initialValue: _type,
+            decoration: const InputDecoration(labelText: 'نوع الزرعة'),
+            items: _brand!.types
+                .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                .toList(),
+            onChanged: (v) => setState(() {
+              _type = v;
+              _size = null;
+            }),
+          ),
+          const SizedBox(height: 14),
+          Align(
+            alignment: Alignment.centerRight,
+            child: BrandBadge(brand: _brand!.name),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _brand!.sizes.map((s) {
+              final sel = _size == s;
+              return FilterChip(
+                label: Text(s),
+                selected: sel,
+                selectedColor: AppColors.brandColor(_brand!.name)
+                    .withValues(alpha: 0.2),
+                checkmarkColor: AppColors.brandColor(_brand!.name),
+                onSelected: (_) => setState(() {
+                  _size = s;
+                  _customSize.clear();
+                }),
+              );
+            }).toList(),
+          ),
+          TextField(
+            controller: _customSize,
+            decoration: const InputDecoration(
+              labelText: 'مقاس مخصص (اختياري)',
+            ),
+            onChanged: (_) => setState(() => _size = null),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _generalItemFields() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (_category.id == 'custom') ...[
+          TextField(
+            controller: _customCategory,
+            decoration: const InputDecoration(
+              labelText: 'اسم الصنف',
+              hintText: 'مثال: مواد تعقيم، خيوط جراحية...',
+            ),
+          ),
+          const SizedBox(height: 14),
+        ] else ...[
+          Align(
+            alignment: Alignment.centerRight,
+            child: BrandBadge(brand: _category.storageBrand!),
+          ),
+          const SizedBox(height: 14),
+        ],
+        TextField(
+          controller: _itemName,
+          decoration: InputDecoration(
+            labelText: _category.id == 'custom' ? 'اسم المادة' : 'اسم ${_category.nameAr}',
+            hintText: _category.id == 'accessories'
+                ? 'مثال: Healing cap، Abutment...'
+                : _category.id == 'tools'
+                    ? 'مثال: مفك، قالب سيلikon...'
+                    : 'مثال: قفازات، محلول تعقيم...',
+          ),
+        ),
+        const SizedBox(height: 14),
+        TextField(
+          controller: _itemSpec,
+          decoration: const InputDecoration(
+            labelText: 'المواصفات (اختياري)',
+            hintText: 'مقاس، لون، رقم الموديل...',
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: SectionCard(
         title: 'إضافة مخزون للمستودع',
-        subtitle: 'اختر الشركة ثم النوع والمقاس',
+        subtitle: _category.isImplants
+            ? 'اختر الشركة ثم النوع والمقاس'
+            : 'أدخل بيانات ${_category.nameAr}',
         icon: Icons.add_box_outlined,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                for (final b in kBrands) ...[
-                  BrandSelectCard(
-                    name: b.name,
-                    subtitle: _brandMeta[b.name]?.$2 ?? '',
-                    emoji: _brandMeta[b.name]?.$1 ?? '⚪',
-                    selected: _brand?.name == b.name,
-                    onTap: () => setState(() {
-                      _brand = b;
-                      _type = null;
-                      _size = null;
-                    }),
+            Text(
+              'الصنف',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
                   ),
-                  if (b != kBrands.last) const SizedBox(width: 8),
-                ],
-              ],
             ),
-            if (_brand != null) ...[
-              const SizedBox(height: 20),
-              DropdownButtonFormField<String>(
-                initialValue: _type,
-                decoration: const InputDecoration(labelText: 'نوع الزرعة'),
-                items: _brand!.types
-                    .map((t) => DropdownMenuItem(value: t, child: Text(t)))
-                    .toList(),
-                onChanged: (v) => setState(() {
-                  _type = v;
-                  _size = null;
-                }),
-              ),
-              const SizedBox(height: 14),
-              Align(
-                alignment: Alignment.centerRight,
-                child: BrandBadge(brand: _brand!.name),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _brand!.sizes.map((s) {
-                  final sel = _size == s;
-                  return FilterChip(
-                    label: Text(s),
-                    selected: sel,
-                    selectedColor: AppColors.brandColor(_brand!.name)
-                        .withValues(alpha: 0.2),
-                    checkmarkColor: AppColors.brandColor(_brand!.name),
-                    onSelected: (_) => setState(() {
-                      _size = s;
-                      _customSize.clear();
-                    }),
-                  );
-                }).toList(),
-              ),
-              TextField(
-                controller: _customSize,
-                decoration: const InputDecoration(
-                  labelText: 'مقاس مخصص (اختياري)',
-                ),
-                onChanged: (_) => setState(() => _size = null),
-              ),
-            ],
+            const SizedBox(height: 10),
+            _categorySelector(),
+            const SizedBox(height: 20),
+            if (_category.isImplants) _implantFields() else _generalItemFields(),
             const SizedBox(height: 16),
             Row(
               children: [

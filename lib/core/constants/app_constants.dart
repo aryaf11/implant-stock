@@ -113,3 +113,30 @@ BrandCatalog? brandByName(String name) {
   }
   return null;
 }
+
+/// أصناف المخزون — الزرعات أو مواد أخرى.
+class StockCategory {
+  const StockCategory({
+    required this.id,
+    required this.nameAr,
+    this.storageBrand,
+  });
+
+  final String id;
+  final String nameAr;
+
+  /// قيمة حقل brand عند التخزين — null = واجهة شركات الزرعات.
+  final String? storageBrand;
+
+  bool get isImplants => id == 'implants';
+}
+
+const kStockCategories = <StockCategory>[
+  StockCategory(id: 'implants', nameAr: 'زرعات'),
+  StockCategory(id: 'accessories', nameAr: 'ملحقات', storageBrand: 'ملحقات'),
+  StockCategory(id: 'tools', nameAr: 'أدوات', storageBrand: 'أدوات'),
+  StockCategory(id: 'custom', nameAr: 'صنف آخر'),
+];
+
+bool isImplantBrand(String brand) =>
+    kBrands.any((b) => b.name == brand);
