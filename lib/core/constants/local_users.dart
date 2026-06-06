@@ -59,6 +59,13 @@ const kLocalUsers = <LocalUser>[
     role: UserRole.supervisor,
     centerId: 'branch4',
   ),
+  LocalUser(
+    username: 'dr.saleh',
+    password: 'dr.saleh4710',
+    displayName: 'د. صالح',
+    role: UserRole.supervisor,
+    centerId: 'drsaleh',
+  ),
 ];
 
 LocalUser? findLocalUser(String username) {

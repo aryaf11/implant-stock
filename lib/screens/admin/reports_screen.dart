@@ -50,18 +50,21 @@ class _ReportsScreenState extends State<ReportsScreen> {
           _period,
           custom: _customRange,
         );
-        final lines = ReportService.extractDispatches(
+        final lines = ReportService.extractMovements(
           state,
           range: range,
           centerId: _centerFilter,
         );
         final summaries = ReportService.summarizeByBranch(lines);
-        final grandTotal = lines.fold<int>(0, (s, l) => s + l.qty);
+        final dispatchTotal =
+            lines.where((l) => !l.isReturn).fold<int>(0, (s, l) => s + l.qty);
+        final returnTotal =
+            lines.where((l) => l.isReturn).fold<int>(0, (s, l) => s + l.qty);
 
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            const SectionHeader(title: 'تقارير الصرف'),
+            const SectionHeader(title: 'تقارير الصرف والاسترجاع'),
             Text(
               formatRangeAr(range),
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -134,25 +137,37 @@ class _ReportsScreenState extends State<ReportsScreen> {
               physics: const NeverScrollableScrollPhysics(),
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
-              childAspectRatio: 1.6,
+              childAspectRatio: 1.5,
               children: [
                 StatCard(
-                  value: '$grandTotal',
-                  label: 'إجمالي القطع المصروفة',
-                  icon: Icons.inventory_2_outlined,
+                  value: '$dispatchTotal',
+                  label: 'قطع مصروفة',
+                  icon: Icons.send_outlined,
                 ),
                 StatCard(
-                  value: '${lines.length}',
+                  value: '$returnTotal',
+                  label: 'قطع مسترجعة',
+                  icon: Icons.replay,
+                  colors: const [AppColors.info, Color(0xFF63B3ED)],
+                ),
+                StatCard(
+                  value: '${lines.where((l) => !l.isReturn).length}',
                   label: 'عمليات صرف',
                   icon: Icons.receipt_long_outlined,
                   colors: const [AppColors.purple, Color(0xFF9F7AEA)],
+                ),
+                StatCard(
+                  value: '${lines.where((l) => l.isReturn).length}',
+                  label: 'عمليات استرجاع',
+                  icon: Icons.undo_outlined,
+                  colors: const [AppColors.warning, Color(0xFFED8936)],
                 ),
               ],
             ),
             const SizedBox(height: 20),
             if (summaries.isEmpty)
               const EmptyState(
-                message: 'لا توجد عمليات صرف في هذه الفترة',
+                message: 'لا توجد عمليات صرف أو استرجاع في هذه الفترة',
                 icon: Icons.analytics_outlined,
               )
             else
@@ -168,7 +183,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 class _BranchReportCard extends StatelessWidget {
   const _BranchReportCard({required this.summary});
 
-  final BranchDispatchSummary summary;
+  final BranchReportSummary summary;
 
   String get _branchTitle {
     if (summary.centerId == 'unknown') return 'غير محدد';
@@ -189,7 +204,7 @@ class _BranchReportCard extends StatelessWidget {
           style: const TextStyle(fontWeight: FontWeight.w800),
         ),
         subtitle: Text(
-          '${summary.lineCount} عملية · ${summary.totalQty} قطعة',
+          '${summary.lineCount} عملية · صرف ${summary.dispatchQty} · استرجاع ${summary.returnQty}',
         ),
         children: [
           for (final entry in summary.byDate.entries) ...[
@@ -220,18 +235,23 @@ class _BranchReportCard extends StatelessWidget {
             ...entry.value.map(
               (l) => ListTile(
                 dense: true,
+                leading: Icon(
+                  l.isReturn ? Icons.replay : Icons.send,
+                  color: l.isReturn ? AppColors.info : AppColors.purple,
+                  size: 20,
+                ),
                 title: Text(l.type),
                 subtitle: Text(
-                  l.detail.isNotEmpty ? l.detail : l.note,
+                  '${l.op}${l.detail.isNotEmpty ? ' · ${l.detail}' : ''}',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
                 trailing: Text(
                   '${l.qty}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
-                    color: AppColors.primary,
+                    color: l.isReturn ? AppColors.info : AppColors.primary,
                   ),
                 ),
               ),

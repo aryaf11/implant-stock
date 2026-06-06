@@ -10,6 +10,7 @@ const kCenters = <CenterInfo>[
   CenterInfo(id: 'branch2', nameAr: 'الفرع الثاني'),
   CenterInfo(id: 'branch3', nameAr: 'الفرع الثالث'),
   CenterInfo(id: 'branch4', nameAr: 'الفرع الرابع'),
+  CenterInfo(id: 'drsaleh', nameAr: 'د. صالح'),
 ];
 
 /// يحوّل معرّف الفرع أو اسمه العربي إلى branch1 … branch4

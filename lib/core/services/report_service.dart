@@ -7,10 +7,11 @@ import '../utils/date_utils.dart';
 
 enum ReportPeriod { week, month, custom }
 
-class DispatchLine {
-  const DispatchLine({
+class ReportLine {
+  const ReportLine({
     required this.date,
     required this.centerId,
+    required this.op,
     required this.type,
     required this.qty,
     required this.detail,
@@ -19,28 +20,35 @@ class DispatchLine {
 
   final DateTime date;
   final String centerId;
+  final String op;
   final String type;
   final int qty;
   final String detail;
   final String note;
+
+  bool get isReturn => op == 'استرجاع';
 }
 
-class BranchDispatchSummary {
-  const BranchDispatchSummary({
+class BranchReportSummary {
+  const BranchReportSummary({
     required this.centerId,
-    required this.totalQty,
+    required this.dispatchQty,
+    required this.returnQty,
     required this.lineCount,
     required this.byDate,
   });
 
   final String centerId;
-  final int totalQty;
+  final int dispatchQty;
+  final int returnQty;
   final int lineCount;
-  final Map<DateTime, List<DispatchLine>> byDate;
+  final Map<DateTime, List<ReportLine>> byDate;
+
+  int get totalQty => dispatchQty + returnQty;
 }
 
 class ReportService {
-  static const dispatchOps = {'صرف'};
+  static const reportOps = {'صرف', 'استرجاع'};
 
   static DateTimeRange periodRange(ReportPeriod period, {DateTimeRange? custom}) {
     final now = DateTime.now();
@@ -59,7 +67,7 @@ class ReportService {
     }
   }
 
-  static List<DispatchLine> extractDispatches(
+  static List<ReportLine> extractMovements(
     StockState state, {
     required DateTimeRange range,
     String? centerId,
@@ -74,9 +82,9 @@ class ReportService {
       59,
     );
 
-    final lines = <DispatchLine>[];
+    final lines = <ReportLine>[];
     for (final log in state.movementLog) {
-      if (!dispatchOps.contains(log.op)) continue;
+      if (!reportOps.contains(log.op)) continue;
       final d = parseDateAr(log.date);
       if (d == null) continue;
       final day = DateTime(d.year, d.month, d.day);
@@ -87,9 +95,10 @@ class ReportService {
         continue;
       }
 
-      lines.add(DispatchLine(
+      lines.add(ReportLine(
         date: day,
         centerId: cid,
+        op: log.op,
         type: log.type,
         qty: log.qty,
         detail: log.detail,
@@ -102,29 +111,38 @@ class ReportService {
 
   static String _resolveCenterId(MovementLog log) {
     if (log.center.isNotEmpty && log.center != 'المستودع') {
-      if (kCenters.any((c) => c.id == log.center)) return log.center;
+      final id = resolveCenterId(log.center);
+      if (kCenters.any((c) => c.id == id)) return id;
     }
     for (final c in kCenters) {
       if (log.detail.contains(c.nameAr)) return c.id;
     }
-    return log.center.isEmpty ? 'unknown' : log.center;
+    if (log.detail.contains('د. صالح') || log.detail.contains('dr.saleh')) {
+      return 'drsaleh';
+    }
+    return log.center.isEmpty ? 'unknown' : resolveCenterId(log.center);
   }
 
-  static List<BranchDispatchSummary> summarizeByBranch(List<DispatchLine> lines) {
-    final map = <String, List<DispatchLine>>{};
+  static List<BranchReportSummary> summarizeByBranch(List<ReportLine> lines) {
+    final map = <String, List<ReportLine>>{};
     for (final l in lines) {
       map.putIfAbsent(l.centerId, () => []).add(l);
     }
 
-    final summaries = <BranchDispatchSummary>[];
+    final summaries = <BranchReportSummary>[];
     for (final c in kCenters) {
       final branchLines = map[c.id] ?? [];
       if (branchLines.isEmpty) continue;
 
-      final byDate = <DateTime, List<DispatchLine>>{};
-      var total = 0;
+      final byDate = <DateTime, List<ReportLine>>{};
+      var dispatchQty = 0;
+      var returnQty = 0;
       for (final l in branchLines) {
-        total += l.qty;
+        if (l.isReturn) {
+          returnQty += l.qty;
+        } else {
+          dispatchQty += l.qty;
+        }
         byDate.putIfAbsent(l.date, () => []).add(l);
       }
       final sortedDates = byDate.keys.toList()..sort((a, b) => b.compareTo(a));
@@ -132,9 +150,10 @@ class ReportService {
         for (final d in sortedDates) d: byDate[d]!,
       };
 
-      summaries.add(BranchDispatchSummary(
+      summaries.add(BranchReportSummary(
         centerId: c.id,
-        totalQty: total,
+        dispatchQty: dispatchQty,
+        returnQty: returnQty,
         lineCount: branchLines.length,
         byDate: sortedByDate,
       ));
@@ -142,15 +161,21 @@ class ReportService {
 
     final unknown = map['unknown'];
     if (unknown != null && unknown.isNotEmpty) {
-      final byDate = <DateTime, List<DispatchLine>>{};
-      var total = 0;
+      final byDate = <DateTime, List<ReportLine>>{};
+      var dispatchQty = 0;
+      var returnQty = 0;
       for (final l in unknown) {
-        total += l.qty;
+        if (l.isReturn) {
+          returnQty += l.qty;
+        } else {
+          dispatchQty += l.qty;
+        }
         byDate.putIfAbsent(l.date, () => []).add(l);
       }
-      summaries.add(BranchDispatchSummary(
+      summaries.add(BranchReportSummary(
         centerId: 'unknown',
-        totalQty: total,
+        dispatchQty: dispatchQty,
+        returnQty: returnQty,
         lineCount: unknown.length,
         byDate: byDate,
       ));

@@ -19,8 +19,22 @@ class UserRepository {
     _prefs ??= await SharedPreferences.getInstance();
     if (!_prefs!.containsKey(_key)) {
       await _saveAll(kLocalUsers.map(_fromLocal).toList());
+    } else {
+      await _mergeMissingDefaults();
     }
     _cache = null;
+  }
+
+  /// إضافة حسابات جديدة من الافتراضي دون حذف الموجود.
+  Future<void> _mergeMissingDefaults() async {
+    final all = [...await loadAll()];
+    var changed = false;
+    for (final u in kLocalUsers) {
+      if (all.any((x) => x.username == u.username)) continue;
+      all.add(_fromLocal(u));
+      changed = true;
+    }
+    if (changed) await _saveAll(all);
   }
 
   StoredUser _fromLocal(LocalUser u) => StoredUser(
