@@ -99,6 +99,10 @@ class UserRepository {
         (user.centerId == null || user.centerId!.isEmpty)) {
       throw Exception('اختر الفرع للمشرف');
     }
+    if (user.role == UserRole.nurse &&
+        (user.centerId == null || user.centerId!.isEmpty)) {
+      throw Exception('اختر الفرع للممرضة');
+    }
     all.add(user);
     await _saveAll(all);
   }
@@ -128,6 +132,10 @@ class UserRepository {
     if (u.role == UserRole.supervisor &&
         (u.centerId == null || u.centerId!.isEmpty)) {
       throw Exception('المشرف يحتاج فرعاً');
+    }
+    if (u.role == UserRole.nurse &&
+        (u.centerId == null || u.centerId!.isEmpty)) {
+      throw Exception('الممرضة تحتاج فرعاً');
     }
     all[i] = u;
     await _saveAll(all);

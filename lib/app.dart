@@ -11,6 +11,7 @@ import 'providers/auth_provider.dart';
 import 'providers/stock_provider.dart';
 import 'screens/admin/admin_shell.dart';
 import 'screens/login_screen.dart';
+import 'screens/nurse/nurse_shell.dart';
 import 'screens/supervisor/supervisor_shell.dart';
 import 'widgets/empty_state.dart';
 
@@ -111,6 +112,9 @@ class _RootRouterState extends State<_RootRouter> {
     final user = auth.user!;
     if (user.role == UserRole.admin) {
       return const AdminShell();
+    }
+    if (user.role == UserRole.nurse) {
+      return const NurseShell();
     }
     return const SupervisorShell();
   }

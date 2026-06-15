@@ -16,6 +16,8 @@ class StoredUser {
   final String? centerId;
 
   bool get isAdmin => role == UserRole.admin;
+  bool get needsCenter =>
+      role == UserRole.supervisor || role == UserRole.nurse;
 
   AppUser toAppUser() => AppUser(
         username: username,
@@ -28,17 +30,16 @@ class StoredUser {
         'username': username,
         'password': password,
         'displayName': displayName,
-        'role': role == UserRole.admin ? 'admin' : 'supervisor',
+        'role': userRoleToString(role),
         if (centerId != null) 'centerId': centerId,
       };
 
   factory StoredUser.fromMap(Map<String, dynamic> m) {
-    final roleStr = m['role'] as String? ?? 'supervisor';
     return StoredUser(
       username: m['username'] as String? ?? '',
       password: m['password'] as String? ?? '',
       displayName: m['displayName'] as String? ?? '',
-      role: roleStr == 'admin' ? UserRole.admin : UserRole.supervisor,
+      role: parseUserRole(m['role'] as String?),
       centerId: m['centerId'] as String?,
     );
   }

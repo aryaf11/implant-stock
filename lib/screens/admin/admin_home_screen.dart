@@ -71,6 +71,13 @@ class AdminHomeScreen extends StatelessWidget {
                   icon: Icons.mark_email_unread_outlined,
                   colors: const [AppColors.purple, Color(0xFF9F7AEA)],
                 ),
+                if (s.pendingNurseReports.isNotEmpty)
+                  StatCard(
+                    value: '${s.pendingNurseReports.length}',
+                    label: 'تقارير ممرضة',
+                    icon: Icons.local_hospital_outlined,
+                    colors: const [AppColors.danger, Color(0xFFFC8181)],
+                  ),
               ],
             ),
             if (s.pendingReturnRequests.isNotEmpty) ...[
@@ -87,6 +94,60 @@ class AdminHomeScreen extends StatelessWidget {
               const SectionHeader(title: 'مخزون منخفض'),
               ...low.map((i) => ImplantTile(item: i)),
             ],
+            const SizedBox(height: 20),
+            const SectionHeader(title: 'تقارير الممرضة'),
+            if (s.pendingNurseReports.isEmpty)
+              const EmptyState(
+                message: 'لا توجد تقارير جديدة',
+                icon: Icons.medical_information_outlined,
+              )
+            else
+              ...s.pendingNurseReports.map(
+                (r) => Card(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: (r.isFailure
+                              ? AppColors.danger
+                              : AppColors.info)
+                          .withValues(alpha: 0.12),
+                      child: Icon(
+                        r.isFailure
+                            ? Icons.report_problem
+                            : Icons.medical_services,
+                        color:
+                            r.isFailure ? AppColors.danger : AppColors.info,
+                      ),
+                    ),
+                    title: Text(
+                      r.title,
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    subtitle: Text(
+                      [
+                        centerNameAr(r.centerId),
+                        r.nurseName,
+                        r.subtitle,
+                        if (r.note.isNotEmpty) r.note,
+                        r.date,
+                      ].join('\n'),
+                    ),
+                    isThreeLine: true,
+                    trailing: stock.isBusy('nurse_${r.id}')
+                        ? const SizedBox(
+                            width: 28,
+                            height: 28,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : IconButton(
+                            tooltip: 'تم الاطلاع',
+                            icon: const Icon(Icons.check_circle_outline),
+                            color: AppColors.success,
+                            onPressed: () => _onDismissNurse(context, r.id),
+                          ),
+                  ),
+                ),
+              ),
             const SizedBox(height: 20),
             const SectionHeader(title: 'طلبات الصرف المعلقة'),
             if (s.pendingRequests.isEmpty)
@@ -138,6 +199,18 @@ class AdminHomeScreen extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+
+  Future<void> _onDismissNurse(BuildContext context, String id) async {
+    final stock = context.read<StockProvider>();
+    final err = await stock.dismissNurseReport(id);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(err ?? 'تم الاطلاع على التقرير'),
+        backgroundColor: err != null ? AppColors.danger : AppColors.success,
+      ),
     );
   }
 

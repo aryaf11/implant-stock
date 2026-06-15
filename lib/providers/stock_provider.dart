@@ -72,6 +72,9 @@ class StockProvider extends ChangeNotifier {
   Future<String?> rejectReturn(String requestId) =>
       _runBusy('ret_$requestId', (s) => _repo.rejectReturn(s, requestId));
 
+  Future<String?> dismissNurseReport(String reportId) =>
+      _runBusy('nurse_$reportId', (s) => _repo.dismissNurseReport(s, reportId));
+
   Future<String?> _runBusy(
     String busyId,
     Future<void> Function(StockState) action,

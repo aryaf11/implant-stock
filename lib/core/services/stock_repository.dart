@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../constants/app_constants.dart';
 import '../models/implant_item.dart';
 import '../models/movement_log.dart';
+import '../models/nurse_report.dart';
 import '../models/return_request.dart';
 import '../models/stock_request.dart';
 import '../storage/local_database.dart';
@@ -64,12 +65,21 @@ class StockRepository {
             .toList())
         : <ReturnRequest>[];
 
+    final nurseSnap = snap['nurseReports'];
+    final nurseReports = nurseSnap is Map
+        ? ((nurseSnap['items'] as List<dynamic>? ?? [])
+            .map((e) =>
+                NurseReport.fromMap(Map<String, dynamic>.from(e as Map)))
+            .toList())
+        : <NurseReport>[];
+
     return StockState(
       warehouse: warehouse,
       centers: centers,
       movementLog: log,
       requests: reqs,
       returnRequests: returns,
+      nurseReports: nurseReports,
     );
   }
 
@@ -118,6 +128,10 @@ class StockRepository {
       },
       'returnRequests': {
         'items': state.returnRequests.map((e) => e.toMap()).toList(),
+        'updated': ts,
+      },
+      'nurseReports': {
+        'items': state.nurseReports.map((e) => e.toMap()).toList(),
         'updated': ts,
       },
     });
@@ -531,6 +545,118 @@ class StockRepository {
     );
     await _persist(state);
   }
+
+  Future<void> submitNurseUsage(
+    StockState state, {
+    required String centerId,
+    required String nurseUsername,
+    required String nurseName,
+    required String itemId,
+    required int qty,
+    required String patientName,
+    String patientFileNo = '',
+  }) async {
+    if (patientName.trim().isEmpty) {
+      throw Exception('اسم المريض مطلوب');
+    }
+    final list = state.centers[centerId]!;
+    final idx = list.indexWhere((i) => i.id == itemId);
+    if (idx < 0) throw Exception('الصنف غير موجود');
+    final item = list[idx];
+    if (qty > item.qty) throw Exception('الكمية أكبر من المتاح');
+    item.qty -= qty;
+    if (item.qty == 0) list.removeAt(idx);
+
+    final patient = patientName.trim();
+    _log(
+      state,
+      MovementLog(
+        date: todayAr(),
+        op: 'استخدام',
+        type: item.fullName,
+        qty: qty,
+        detail:
+            '${centerNameAr(centerId)} - $patient${patientFileNo.isNotEmpty ? ' (ملف $patientFileNo)' : ''}',
+        center: centerId,
+        brand: item.brand,
+        size: item.size,
+        note: patient,
+      ),
+    );
+
+    state.nurseReports.insert(
+      0,
+      NurseReport(
+        id: _newId(),
+        type: 'usage',
+        centerId: centerId,
+        nurseUsername: nurseUsername,
+        nurseName: nurseName,
+        patientName: patient,
+        patientFileNo: patientFileNo.trim(),
+        implantInfo: item.fullName,
+        qty: qty,
+        date: todayAr(),
+      ),
+    );
+    await _persist(state);
+  }
+
+  Future<void> submitImplantFailure(
+    StockState state, {
+    required String centerId,
+    required String nurseUsername,
+    required String nurseName,
+    required String patientName,
+    required String patientFileNo,
+    String implantInfo = '',
+    String note = '',
+  }) async {
+    if (patientName.trim().isEmpty) {
+      throw Exception('اسم المريض مطلوب');
+    }
+    if (patientFileNo.trim().isEmpty) {
+      throw Exception('رقم ملف المريض مطلوب');
+    }
+
+    state.nurseReports.insert(
+      0,
+      NurseReport(
+        id: _newId(),
+        type: 'failure',
+        centerId: centerId,
+        nurseUsername: nurseUsername,
+        nurseName: nurseName,
+        patientName: patientName.trim(),
+        patientFileNo: patientFileNo.trim(),
+        implantInfo: implantInfo.trim(),
+        date: todayAr(),
+        note: note.trim(),
+      ),
+    );
+
+    _log(
+      state,
+      MovementLog(
+        date: todayAr(),
+        op: 'فشل زرعة',
+        type: implantInfo.trim().isEmpty ? 'غير محدد' : implantInfo.trim(),
+        qty: 0,
+        detail:
+            'مريض: ${patientName.trim()} · ملف: ${patientFileNo.trim()}${note.trim().isNotEmpty ? ' · $note' : ''}',
+        center: centerId,
+        note: note.trim(),
+      ),
+    );
+    await _persist(state);
+  }
+
+  Future<void> dismissNurseReport(StockState state, String reportId) async {
+    final i = state.nurseReports.indexWhere((r) => r.id == reportId);
+    if (i < 0) throw Exception('التقرير غير موجود');
+    state.nurseReports.removeAt(i);
+    await _persist(state);
+  }
 }
 
 class StockState {
@@ -540,6 +666,7 @@ class StockState {
     required this.movementLog,
     required this.requests,
     required this.returnRequests,
+    required this.nurseReports,
   });
 
   List<ImplantItem> warehouse;
@@ -547,6 +674,7 @@ class StockState {
   List<MovementLog> movementLog;
   List<StockRequest> requests;
   List<ReturnRequest> returnRequests;
+  List<NurseReport> nurseReports;
 
   List<StockRequest> get pendingRequests => requests
       .where((r) => r.status.trim().toLowerCase() == 'pending')
@@ -555,6 +683,9 @@ class StockState {
   List<ReturnRequest> get pendingReturnRequests => returnRequests
       .where((r) => r.status.trim().toLowerCase() == 'pending')
       .toList();
+
+  List<NurseReport> get pendingNurseReports =>
+      nurseReports.where((r) => r.isPending).toList();
 
   int get totalWarehouseQty => warehouse.fold<int>(0, (s, i) => s + i.qty);
 

@@ -52,6 +52,7 @@ class LocalDatabase {
       'movementLog': {'items': <dynamic>[], 'updated': ts},
       'requests': {'items': <dynamic>[], 'updated': ts},
       'returnRequests': {'items': <dynamic>[], 'updated': ts},
+      'nurseReports': {'items': <dynamic>[], 'updated': ts},
     };
   }
 
@@ -81,6 +82,7 @@ class LocalDatabase {
       'movementLog',
       'requests',
       'returnRequests',
+      'nurseReports',
     ]) {
       final raw = _box!.get(key);
       if (raw is Map) {

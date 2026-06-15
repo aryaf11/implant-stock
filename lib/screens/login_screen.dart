@@ -100,7 +100,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  'أدمن المستودع أو مشرف الفرع',
+                                  'أدمن المستودع · مشرف الفرع · ممرضة',
                                   style: Theme.of(context)
                                       .textTheme
                                       .bodySmall

@@ -102,10 +102,14 @@ class _UsersScreenState extends State<UsersScreen> {
                       value: UserRole.supervisor,
                       child: Text('مشرف فرع'),
                     ),
+                    DropdownMenuItem(
+                      value: UserRole.nurse,
+                      child: Text('ممرضة'),
+                    ),
                   ],
                   onChanged: (v) => setDlg(() => role = v ?? role),
                 ),
-                if (role == UserRole.supervisor) ...[
+                if (role == UserRole.supervisor || role == UserRole.nurse) ...[
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     value: centerId,
@@ -148,7 +152,9 @@ class _UsersScreenState extends State<UsersScreen> {
           password: passCtrl.text.trim().isEmpty ? null : passCtrl.text,
           displayName: nameCtrl.text.trim(),
           role: role,
-          centerId: role == UserRole.supervisor ? centerId : null,
+          centerId: role == UserRole.supervisor || role == UserRole.nurse
+              ? centerId
+              : null,
           clearCenterId: role == UserRole.admin,
         );
       } else {
@@ -160,7 +166,9 @@ class _UsersScreenState extends State<UsersScreen> {
                 ? usernameCtrl.text.trim()
                 : nameCtrl.text.trim(),
             role: role,
-            centerId: role == UserRole.supervisor ? centerId : null,
+            centerId: role == UserRole.supervisor || role == UserRole.nurse
+                ? centerId
+                : null,
           ),
         );
       }
@@ -261,10 +269,20 @@ class _UsersScreenState extends State<UsersScreen> {
                 leading: CircleAvatar(
                   backgroundColor: u.isAdmin
                       ? AppColors.primary.withValues(alpha: 0.15)
-                      : AppColors.info.withValues(alpha: 0.15),
+                      : u.role == UserRole.nurse
+                          ? AppColors.danger.withValues(alpha: 0.12)
+                          : AppColors.info.withValues(alpha: 0.15),
                   child: Icon(
-                    u.isAdmin ? Icons.admin_panel_settings : Icons.person,
-                    color: u.isAdmin ? AppColors.primary : AppColors.info,
+                    u.isAdmin
+                        ? Icons.admin_panel_settings
+                        : u.role == UserRole.nurse
+                            ? Icons.local_hospital
+                            : Icons.person,
+                    color: u.isAdmin
+                        ? AppColors.primary
+                        : u.role == UserRole.nurse
+                            ? AppColors.danger
+                            : AppColors.info,
                   ),
                 ),
                 title: Text(
@@ -272,7 +290,7 @@ class _UsersScreenState extends State<UsersScreen> {
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
                 subtitle: Text(
-                  '${u.username} · ${u.isAdmin ? "أدمن" : centerNameAr(u.centerId ?? "")}',
+                  '${u.username} · ${userRoleLabelAr(u.role)}${u.needsCenter ? " · ${centerNameAr(u.centerId ?? "")}" : ""}',
                 ),
                 trailing: PopupMenuButton<String>(
                   onSelected: (v) {
