@@ -130,6 +130,16 @@ class AppDrawer extends StatelessWidget {
             title: const Text('تسجيل الخروج', style: TextStyle(color: AppColors.danger)),
             onTap: onLogout,
           ),
+          const SizedBox(height: 4),
+          Center(
+            child: Text(
+              'الإصدار 1.1.0',
+              style: TextStyle(
+                color: Colors.grey.shade500,
+                fontSize: 11,
+              ),
+            ),
+          ),
           const SizedBox(height: 8),
         ],
       ),

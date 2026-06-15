@@ -1,7 +1,7 @@
 name: implant_stock
 description: تطبيق إدارة مخزون زرعات الأسنان
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.1.0+2
 
 environment:
   sdk: ^3.11.5

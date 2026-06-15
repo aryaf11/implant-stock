@@ -118,10 +118,10 @@ class _AppBottomNav extends StatelessWidget {
           ),
         ],
       ),
-      child: SafeArea(
+        child: SafeArea(
         top: false,
         child: SizedBox(
-          height: 64,
+          height: 72,
           child: Row(
             children: [
               for (var i = 0; i < items.length; i++) ...[
@@ -136,7 +136,7 @@ class _AppBottomNav extends StatelessWidget {
                           i == selectedIndex
                               ? items[i].selectedIcon
                               : items[i].icon,
-                          size: 22,
+                          size: 26,
                           color: i == selectedIndex && selectedIndex >= 0
                               ? AppColors.primary
                               : const Color(0xFF9CA3AF),
