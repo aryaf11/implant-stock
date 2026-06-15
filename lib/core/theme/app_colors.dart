@@ -7,6 +7,7 @@ abstract final class AppColors {
   static const primaryLight = Color(0xFF3D9B5F);
   static const accent = Color(0xFF52B788);
   static const surface = Color(0xFFF4F9F6);
+  static const pageBg = Color(0xFFEDF2EE);
   static const card = Colors.white;
 
   static const success = Color(0xFF276749);

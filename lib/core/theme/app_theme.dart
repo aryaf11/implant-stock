@@ -12,7 +12,7 @@ class AppTheme {
     final base = ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      scaffoldBackgroundColor: AppColors.surface,
+      scaffoldBackgroundColor: AppColors.pageBg,
       colorScheme: ColorScheme.fromSeed(
         seedColor: primary,
         primary: primary,
