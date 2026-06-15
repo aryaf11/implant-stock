@@ -1,5 +1,5 @@
 {
-  "buildCommand": "git clone https://github.com/flutter/flutter.git --depth 1 -b stable /tmp/flutter && export PATH=/tmp/flutter/bin:$PATH && flutter config --enable-web && flutter precache --web && flutter pub get && flutter build web --release --pwa-strategy=none --base-href \"/\"",
+  "buildCommand": "bash scripts/build_web.sh",
   "outputDirectory": "build/web",
   "installCommand": "echo skip",
   "framework": null,
