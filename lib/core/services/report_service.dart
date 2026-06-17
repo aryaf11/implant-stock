@@ -5,7 +5,7 @@ import '../models/movement_log.dart';
 import '../services/stock_repository.dart';
 import '../utils/date_utils.dart';
 
-enum ReportPeriod { week, month, custom }
+enum ReportPeriod { week, month, all, custom }
 
 class ReportLine {
   const ReportLine({
@@ -62,6 +62,11 @@ class ReportService {
       case ReportPeriod.month:
         final start = DateTime(today.year, today.month, 1);
         return DateTimeRange(start: start, end: today);
+      case ReportPeriod.all:
+        return DateTimeRange(
+          start: DateTime(2020, 1, 1),
+          end: today,
+        );
       case ReportPeriod.custom:
         return custom ?? DateTimeRange(start: today, end: today);
     }
@@ -71,6 +76,7 @@ class ReportService {
     StockState state, {
     required DateTimeRange range,
     String? centerId,
+    bool includeAllDates = false,
   }) {
     final from = DateTime(range.start.year, range.start.month, range.start.day);
     final to = DateTime(
@@ -85,10 +91,13 @@ class ReportService {
     final lines = <ReportLine>[];
     for (final log in state.movementLog) {
       if (!reportOps.contains(log.op)) continue;
-      final d = parseDateAr(log.date);
-      if (d == null) continue;
+      var d = parseDateAr(log.date);
+      if (d == null) {
+        if (!includeAllDates) continue;
+        d = from;
+      }
       final day = DateTime(d.year, d.month, d.day);
-      if (day.isBefore(from) || day.isAfter(to)) continue;
+      if (!includeAllDates && (day.isBefore(from) || day.isAfter(to))) continue;
 
       final cid = _resolveCenterId(log);
       if (centerId != null && centerId.isNotEmpty && cid != centerId) {

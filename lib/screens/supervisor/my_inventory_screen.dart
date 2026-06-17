@@ -5,9 +5,9 @@ import '../../core/constants/app_constants.dart';
 import '../../core/services/stock_repository.dart';
 import '../../providers/stock_provider.dart';
 import '../../widgets/app_shell.dart';
+import '../../widgets/brand_inventory_view.dart';
 import '../../widgets/edit_qty_dialog.dart';
 import '../../widgets/empty_state.dart';
-import '../../widgets/implant_tile.dart';
 import '../../widgets/section_card.dart';
 
 class MyInventoryScreen extends StatelessWidget {
@@ -54,7 +54,6 @@ class MyInventoryScreen extends StatelessWidget {
     }
 
     final low = items.where((i) => i.qty <= 2).length;
-
     final byCategory = inventoryByCategory(items);
 
     return ListView(
@@ -72,7 +71,7 @@ class MyInventoryScreen extends StatelessWidget {
           ),
         if (low > 0) const SizedBox(height: 4),
         AppContentCard(
-          title: 'المخزون حسب التصنيف',
+          title: 'ملخص سريع',
           child: Column(
             children: [
               for (final e in byCategory.entries)
@@ -84,19 +83,20 @@ class MyInventoryScreen extends StatelessWidget {
             ],
           ),
         ),
-        AppContentCard(
-          title: 'أصناف الفرع (${items.length})',
-          child: Column(
-            children: items
-                .map(
-                  (i) => ImplantTile(
-                    item: i,
-                    lowThreshold: 2,
-                    onEditQty: () => _editQty(context, i.id, i.qty),
-                  ),
-                )
-                .toList(),
+        const Padding(
+          padding: EdgeInsets.only(bottom: 8),
+          child: Text(
+            'المخزون حسب الشركة والمقاس',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
+              color: Color(0xFF1A202C),
+            ),
           ),
+        ),
+        BrandInventoryView(
+          items: items,
+          onEditQty: (item) => _editQty(context, item.id, item.qty),
         ),
       ],
     );

@@ -183,11 +183,13 @@ class AppContentCard extends StatelessWidget {
     required this.title,
     required this.child,
     this.padding = const EdgeInsets.all(18),
+    this.trailing,
   });
 
   final String title;
   final Widget child;
   final EdgeInsets padding;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -210,12 +212,19 @@ class AppContentCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.primary,
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.primary,
+                        ),
                   ),
+                ),
+                if (trailing != null) trailing!,
+              ],
             ),
             const SizedBox(height: 14),
             child,

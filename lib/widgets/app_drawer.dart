@@ -133,7 +133,7 @@ class AppDrawer extends StatelessWidget {
           const SizedBox(height: 4),
           Center(
             child: Text(
-              'الإصدار 1.2.0 · مزامنة سحابية',
+              'الإصدار 1.2.1 · مزامنة سحابية',
               style: TextStyle(
                 color: Colors.grey.shade500,
                 fontSize: 11,

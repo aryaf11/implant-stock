@@ -4,8 +4,8 @@ import 'package:provider/provider.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/services/stock_repository.dart';
 import '../../providers/stock_provider.dart';
+import '../../widgets/brand_inventory_view.dart';
 import '../../widgets/edit_qty_dialog.dart';
-import '../../widgets/implant_tile.dart';
 
 class CentersInventoryScreen extends StatefulWidget {
   const CentersInventoryScreen({super.key});
@@ -76,22 +76,23 @@ class _CentersInventoryScreenState extends State<CentersInventoryScreen> {
                       style: const TextStyle(
                         fontWeight: FontWeight.w800,
                         fontSize: 16,
+                        color: Color(0xFF1A202C),
                       ),
                     ),
                   ),
                   if ((centers[c.id] ?? []).isEmpty)
                     const Padding(
-                      padding: EdgeInsets.only(bottom: 12),
-                      child: Text('لا يوجد مخزون',
-                          style: TextStyle(color: Color(0xFF718096))),
+                      padding: EdgeInsets.only(bottom: 16),
+                      child: Text(
+                        'لا يوجد مخزون',
+                        style: TextStyle(color: Color(0xFF718096)),
+                      ),
                     )
                   else
-                    ...(centers[c.id] ?? []).map(
-                      (item) => ImplantTile(
-                        item: item,
-                        onEditQty: () =>
-                            _editQty(context, c.id, item.id, item.qty),
-                      ),
+                    BrandInventoryView(
+                      items: centers[c.id] ?? [],
+                      onEditQty: (item) =>
+                          _editQty(context, c.id, item.id, item.qty),
                     ),
                 ],
             ],
