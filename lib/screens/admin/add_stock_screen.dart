@@ -193,25 +193,39 @@ class _AddStockScreenState extends State<AddStockScreen> {
             alignment: Alignment.centerRight,
             child: BrandBadge(brand: _brand!.name),
           ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _brand!.sizes.map((s) {
-              final sel = _size == s;
-              return FilterChip(
-                label: Text(s),
-                selected: sel,
-                selectedColor: AppColors.brandColor(_brand!.name)
-                    .withValues(alpha: 0.2),
-                checkmarkColor: AppColors.brandColor(_brand!.name),
-                onSelected: (_) => setState(() {
-                  _size = s;
-                  _customSize.clear();
-                }),
+          if (_type != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'مقاسات $_type',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+            ),
+            const SizedBox(height: 8),
+            ..._brand!.sizesForType(_type!).map((s) {
+              final sel = _size == s && _customSize.text.isEmpty;
+              return Card(
+                margin: const EdgeInsets.only(bottom: 6),
+                elevation: 0,
+                color: sel
+                    ? AppColors.brandColor(_brand!.name).withValues(alpha: 0.12)
+                    : const Color(0xFFF7FAFC),
+                child: ListTile(
+                  dense: true,
+                  title: Text(s, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  trailing: sel
+                      ? Icon(Icons.check_circle, color: AppColors.brandColor(_brand!.name))
+                      : null,
+                  onTap: () => setState(() {
+                    _size = s;
+                    _customSize.clear();
+                  }),
+                ),
               );
-            }).toList(),
-          ),
+            }),
+          ],
+          const SizedBox(height: 8),
           TextField(
             controller: _customSize,
             decoration: const InputDecoration(

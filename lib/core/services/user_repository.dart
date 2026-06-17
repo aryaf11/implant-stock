@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/local_users.dart';
 import '../models/app_user.dart';
 import '../models/stored_user.dart';
+import '../storage/cloud_sync.dart';
 
 class UserRepository {
   UserRepository._();
@@ -16,7 +17,12 @@ class UserRepository {
 
   Future<void> init() async {
     _prefs ??= await SharedPreferences.getInstance();
+    await _pullFromCloud();
+    await _bootstrapCloudUsers();
     await _syncDefaults(persistIfMissing: true);
+    CloudSync.instance.remoteChanges.listen((_) async {
+      await _pullFromCloud();
+    });
   }
 
   /// إضافة حسابات جديدة من الافتراضي دون حذف الموجود.
@@ -77,12 +83,35 @@ class UserRepository {
     return null;
   }
 
-  Future<void> _saveAll(List<StoredUser> users) async {
+  Future<void> _bootstrapCloudUsers() async {
+    if (!CloudSync.instance.isReady) return;
+    final cloud = await CloudSync.instance.fetchUsers();
+    if (cloud != null && cloud.isNotEmpty) return;
+    final local = await _readFromPrefs();
+    if (local.isEmpty) return;
+    await CloudSync.instance.pushUsers(local.map((e) => e.toMap()).toList());
+  }
+
+  Future<void> _pullFromCloud() async {
+    if (!CloudSync.instance.isReady) return;
+    final cloud = await CloudSync.instance.fetchUsers();
+    if (cloud == null || cloud.isEmpty) return;
+    final all = cloud
+        .map((e) => StoredUser.fromMap(e))
+        .toList();
+    await _saveAllLocal(all);
+  }
+
+  Future<void> _saveAllLocal(List<StoredUser> users) async {
     _prefs ??= await SharedPreferences.getInstance();
     final payload = jsonEncode(users.map((e) => e.toMap()).toList());
-    final ok = await _prefs!.setString(_key, payload);
-    if (!ok) {
-      throw Exception('تعذر حفظ بيانات المستخدمين في المتصفح');
+    await _prefs!.setString(_key, payload);
+  }
+
+  Future<void> _saveAll(List<StoredUser> users) async {
+    await _saveAllLocal(users);
+    if (CloudSync.instance.isReady) {
+      await CloudSync.instance.pushUsers(users.map((e) => e.toMap()).toList());
     }
   }
 

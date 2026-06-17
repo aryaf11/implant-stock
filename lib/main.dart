@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'app.dart';
 import 'core/services/stock_repository.dart';
 import 'core/services/user_repository.dart';
+import 'core/storage/cloud_sync.dart';
 import 'core/storage/local_database.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await CloudSync.instance.init();
   await LocalDatabase.instance.init();
   await UserRepository.instance.init();
 

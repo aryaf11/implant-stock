@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/constants/app_constants.dart';
+import '../../core/services/stock_repository.dart';
 import '../../providers/stock_provider.dart';
 import '../../widgets/app_shell.dart';
+import '../../widgets/edit_qty_dialog.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/implant_tile.dart';
 import '../../widgets/section_card.dart';
@@ -11,6 +14,31 @@ class MyInventoryScreen extends StatelessWidget {
   const MyInventoryScreen({super.key, required this.centerId});
 
   final String centerId;
+
+  Future<void> _editQty(
+    BuildContext context,
+    String itemId,
+    int current,
+  ) async {
+    final newQty = await showEditQtyDialog(
+      context,
+      title: 'تعديل كمية ${centerNameAr(centerId)}',
+      currentQty: current,
+    );
+    if (newQty == null || !context.mounted) return;
+    final err = await context.read<StockProvider>().run(
+          (s) => context.read<StockRepository>().updateCenterQty(
+                s,
+                centerId: centerId,
+                itemId: itemId,
+                newQty: newQty,
+              ),
+        );
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(err ?? 'تم تحديث الكمية')),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,8 +87,15 @@ class MyInventoryScreen extends StatelessWidget {
         AppContentCard(
           title: 'أصناف الفرع (${items.length})',
           child: Column(
-            children:
-                items.map((i) => ImplantTile(item: i, lowThreshold: 2)).toList(),
+            children: items
+                .map(
+                  (i) => ImplantTile(
+                    item: i,
+                    lowThreshold: 2,
+                    onEditQty: () => _editQty(context, i.id, i.qty),
+                  ),
+                )
+                .toList(),
           ),
         ),
       ],

@@ -12,12 +12,14 @@ class ImplantTile extends StatelessWidget {
     this.trailing,
     this.subtitle,
     this.lowThreshold,
+    this.onEditQty,
   });
 
   final ImplantItem item;
   final Widget? trailing;
   final String? subtitle;
   final int? lowThreshold;
+  final VoidCallback? onEditQty;
 
   @override
   Widget build(BuildContext context) {
@@ -80,19 +82,30 @@ class ImplantTile extends StatelessWidget {
                     )
                   : null,
           trailing: trailing ??
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.end,
+              Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    '${item.qty}',
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.primary,
+                  if (onEditQty != null)
+                    IconButton(
+                      tooltip: 'تعديل الكمية',
+                      icon: const Icon(Icons.edit_outlined, size: 20),
+                      onPressed: onEditQty,
                     ),
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '${item.qty}',
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      stockStatusBadge(item.qty, thr),
+                    ],
                   ),
-                  stockStatusBadge(item.qty, thr),
                 ],
               ),
         ),

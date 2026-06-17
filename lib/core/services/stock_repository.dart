@@ -657,6 +657,70 @@ class StockRepository {
     state.nurseReports.removeAt(i);
     await _persist(state);
   }
+
+  Future<void> updateWarehouseQty(
+    StockState state, {
+    required String itemId,
+    required int newQty,
+  }) async {
+    if (newQty < 0) throw Exception('كمية غير صالحة');
+    final idx = state.warehouse.indexWhere((i) => i.id == itemId);
+    if (idx < 0) throw Exception('الصنف غير موجود');
+    final item = state.warehouse[idx];
+    final old = item.qty;
+    if (newQty == 0) {
+      state.warehouse.removeAt(idx);
+    } else {
+      item.qty = newQty;
+    }
+    _log(
+      state,
+      MovementLog(
+        date: todayAr(),
+        op: 'تعديل كمية',
+        type: item.fullName,
+        qty: newQty - old,
+        detail: 'مستودع: $old ← $newQty',
+        center: 'المستودع',
+        brand: item.brand,
+        size: item.size,
+      ),
+    );
+    await _persist(state);
+  }
+
+  Future<void> updateCenterQty(
+    StockState state, {
+    required String centerId,
+    required String itemId,
+    required int newQty,
+  }) async {
+    if (newQty < 0) throw Exception('كمية غير صالحة');
+    final list = state.centers[centerId]!;
+    final idx = list.indexWhere((i) => i.id == itemId);
+    if (idx < 0) throw Exception('الصنف غير موجود');
+    final item = list[idx];
+    final old = item.qty;
+    if (newQty == 0) {
+      list.removeAt(idx);
+    } else {
+      item.qty = newQty;
+    }
+    _log(
+      state,
+      MovementLog(
+        date: todayAr(),
+        op: 'تعديل كمية',
+        type: item.fullName,
+        qty: newQty - old,
+        detail: '${centerNameAr(centerId)}: $old ← $newQty',
+        center: centerId,
+        brand: item.brand,
+        size: item.size,
+      ),
+    );
+    await _persist(state);
+  }
 }
 
 class StockState {

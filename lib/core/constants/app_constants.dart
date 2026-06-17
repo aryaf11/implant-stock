@@ -31,17 +31,27 @@ String centerNameAr(String centerId) {
   return centerId;
 }
 
-/// الشركات الثلاث وأنواعها ومقاساتها.
+/// الشركات الثلاث — لكل نوع مقاساته.
 class BrandCatalog {
   const BrandCatalog({
     required this.name,
     required this.types,
     required this.sizes,
+    this.sizesByType,
   });
 
   final String name;
   final List<String> types;
   final List<String> sizes;
+
+  /// مقاسات مخصصة لكل نوع — إن وُجدت.
+  final Map<String, List<String>>? sizesByType;
+
+  List<String> sizesForType(String type) {
+    final custom = sizesByType?[type];
+    if (custom != null && custom.isNotEmpty) return custom;
+    return sizes;
+  }
 }
 
 const kBrands = <BrandCatalog>[
@@ -104,6 +114,10 @@ const kBrands = <BrandCatalog>[
       '5.0×10',
       '5.0×12',
     ],
+    sizesByType: {
+      'Short': ['3.5×6', '3.5×8', '4.0×6', '4.0×8', '5.0×6'],
+      'Wide': ['5.0×8', '5.0×10', '5.0×12', '6.0×8', '6.0×10', '6.0×12'],
+    },
   ),
 ];
 

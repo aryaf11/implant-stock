@@ -1,7 +1,7 @@
 name: implant_stock
 description: تطبيق إدارة مخزون زرعات الأسنان
 publish_to: 'none'
-version: 1.1.0+2
+version: 1.2.0+3
 
 environment:
   sdk: ^3.11.5
@@ -11,6 +11,8 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
+  firebase_core: ^3.13.0
+  cloud_firestore: ^5.6.6
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   shared_preferences: ^2.5.3

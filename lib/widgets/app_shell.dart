@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/models/implant_item.dart';
+import '../core/storage/cloud_sync.dart';
 import '../core/theme/app_colors.dart';
 
 class AppNavItem {
@@ -65,7 +66,14 @@ class AppShell extends StatelessWidget {
                   ),
                 )
               : null,
-          actions: actions,
+          actions: [
+            if (CloudSync.instance.isReady)
+              const Padding(
+                padding: EdgeInsets.only(left: 4),
+                child: Icon(Icons.cloud_done, size: 20, color: Colors.white70),
+              ),
+            ...?actions,
+          ],
         ),
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -6,8 +6,9 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants/app_constants.dart';
+import 'cloud_sync.dart';
 
-/// تخزين محلي — Hive (موبايل/سطح المكتب) أو SharedPreferences (ويب).
+/// تخزين محلي + مزامنة سحابية (Firestore).
 class LocalDatabase {
   LocalDatabase._();
   static final LocalDatabase instance = LocalDatabase._();
@@ -19,25 +20,35 @@ class LocalDatabase {
   SharedPreferences? _prefs;
   Map<String, dynamic>? _memoryCache;
   final _changes = StreamController<void>.broadcast();
+  StreamSubscription<void>? _cloudSub;
 
   Stream<void> get changes => _changes.stream;
 
   bool get _useWebPrefs => kIsWeb;
 
+  bool get cloudEnabled => CloudSync.instance.isReady;
+
   Future<void> init() async {
+    await CloudSync.instance.init();
     if (_useWebPrefs) {
       _prefs = await SharedPreferences.getInstance();
       _memoryCache = _readFromPrefs();
       if (!_prefs!.containsKey(_webKey)) {
-        await seedEmpty();
+        await _writeLocalOnly(_emptyState());
       }
-      return;
+    } else {
+      await Hive.initFlutter();
+      _box = await Hive.openBox(_boxName);
+      if (!_box!.containsKey('warehouseStock')) {
+        await _writeLocalOnly(_emptyState());
+      }
     }
-    await Hive.initFlutter();
-    _box = await Hive.openBox(_boxName);
-    if (!_box!.containsKey('warehouseStock')) {
-      await seedEmpty();
-    }
+    await _pullFromCloudIfNewer();
+    await _bootstrapCloudFromLocal();
+    _cloudSub = CloudSync.instance.remoteChanges.listen((_) async {
+      await _pullFromCloudIfNewer();
+      _notify();
+    });
   }
 
   Map<String, dynamic> _emptyState() {
@@ -56,9 +67,72 @@ class LocalDatabase {
     };
   }
 
+  int _docTs(Map<String, dynamic>? doc) {
+    if (doc == null) return 0;
+    return (doc['updated'] as num?)?.toInt() ?? 0;
+  }
+
+  bool _docHasData(String key, Map<String, dynamic> doc) {
+    if (key == 'centerStock') {
+      final data = doc['data'];
+      if (data is Map) {
+        for (final v in data.values) {
+          if (v is List && v.isNotEmpty) return true;
+        }
+      }
+      return false;
+    }
+    final items = doc['items'];
+    return items is List && items.isNotEmpty;
+  }
+
+  Future<void> _bootstrapCloudFromLocal() async {
+    if (!CloudSync.instance.isReady) return;
+    final local = _readAllDocs();
+    final toPush = <String, Map<String, dynamic>>{};
+
+    for (final key in CloudSync.stateKeys) {
+      final localDoc = local[key];
+      if (localDoc is! Map) continue;
+      final localMap = Map<String, dynamic>.from(localDoc);
+      if (!_docHasData(key, localMap)) continue;
+
+      final cloud = await CloudSync.instance.fetchDoc(key);
+      if (cloud == null || !_docHasData(key, cloud)) {
+        toPush[key] = localMap;
+      }
+    }
+
+    if (toPush.isNotEmpty) {
+      await CloudSync.instance.pushDocs(toPush);
+    }
+  }
+
+  Future<void> _pullFromCloudIfNewer() async {
+    if (!CloudSync.instance.isReady) return;
+    final local = _readAllDocs();
+    var merged = Map<String, dynamic>.from(local);
+    var changed = false;
+
+    for (final key in CloudSync.stateKeys) {
+      final cloud = await CloudSync.instance.fetchDoc(key);
+      if (cloud == null) continue;
+      final localDoc = local[key];
+      final localMap =
+          localDoc is Map ? Map<String, dynamic>.from(localDoc) : null;
+      if (_docTs(cloud) >= _docTs(localMap)) {
+        merged[key] = _deepStringMap(cloud);
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      await _writeLocalOnly(merged);
+    }
+  }
+
   Future<void> seedEmpty() async {
-    final state = _emptyState();
-    await _writeAll(state);
+    await _writeLocalOnly(_emptyState());
     _notify();
   }
 
@@ -76,14 +150,7 @@ class LocalDatabase {
       return Map<String, dynamic>.from(_memoryCache!);
     }
     final out = <String, dynamic>{};
-    for (final key in [
-      'warehouseStock',
-      'centerStock',
-      'movementLog',
-      'requests',
-      'returnRequests',
-      'nurseReports',
-    ]) {
+    for (final key in CloudSync.stateKeys) {
       final raw = _box!.get(key);
       if (raw is Map) {
         out[key] = _deepStringMap(raw);
@@ -92,7 +159,7 @@ class LocalDatabase {
     return out.isEmpty ? _emptyState() : out;
   }
 
-  Future<void> _writeAll(Map<String, dynamic> all) async {
+  Future<void> _writeLocalOnly(Map<String, dynamic> all) async {
     _memoryCache = _deepStringMap(all);
     if (_useWebPrefs) {
       await _prefs!.setString(_webKey, jsonEncode(_memoryCache));
@@ -111,7 +178,10 @@ class LocalDatabase {
   Future<void> putAll(Map<String, Map<String, dynamic>> docs) async {
     final all = _readAllDocs();
     all.addAll(docs);
-    await _writeAll(all);
+    await _writeLocalOnly(all);
+    if (CloudSync.instance.isReady) {
+      await CloudSync.instance.pushDocs(docs);
+    }
     _notify();
   }
 
@@ -132,7 +202,9 @@ class LocalDatabase {
   }
 
   Future<void> dispose() async {
+    await _cloudSub?.cancel();
     await _changes.close();
     await _box?.close();
+    await CloudSync.instance.dispose();
   }
 }
