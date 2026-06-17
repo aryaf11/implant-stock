@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/app_constants.dart';
 import 'cloud_sync.dart';
 
-/// تخزين محلي + مزامنة سحابية (Firestore).
+/// تخزين محلي + مزامنة سحابية (Supabase).
 class LocalDatabase {
   LocalDatabase._();
   static final LocalDatabase instance = LocalDatabase._();

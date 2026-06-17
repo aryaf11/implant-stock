@@ -1,12 +1,11 @@
 import 'dart:async';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../firebase_options.dart';
+import '../config/supabase_config.dart';
 
-/// مزامنة Firestore — نفس هيكل التطبيق القديم (مجموعة state).
+/// مزامنة Supabase — جدول app_state (key + data JSON).
 class CloudSync {
   CloudSync._();
   static final CloudSync instance = CloudSync._();
@@ -22,58 +21,76 @@ class CloudSync {
 
   static const _usersDoc = 'users_v1';
 
-  FirebaseFirestore? _db;
   bool _ready = false;
   int? _lastPushMs;
   final _remote = StreamController<void>.broadcast();
-  final List<StreamSubscription<dynamic>> _subs = [];
+  RealtimeChannel? _channel;
 
   bool get isReady => _ready;
   Stream<void> get remoteChanges => _remote.stream;
 
+  SupabaseClient get _client => Supabase.instance.client;
+
   Future<void> init() async {
     if (_ready) return;
+    if (!SupabaseConfig.isConfigured) {
+      if (kDebugMode) {
+        debugPrint(
+          '[CloudSync] Supabase غير مضبوط — ضع URL و anon key في supabase_config.dart',
+        );
+      }
+      return;
+    }
+
     try {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
+      await Supabase.initialize(
+        url: SupabaseConfig.url,
+        publishableKey: SupabaseConfig.publishableKey,
       );
-      _db = FirebaseFirestore.instance;
       _ready = true;
       _listenAll();
-      if (kDebugMode) debugPrint('[CloudSync] Firebase connected');
+      if (kDebugMode) debugPrint('[CloudSync] Supabase connected');
     } catch (e, st) {
       if (kDebugMode) debugPrint('[CloudSync] init failed: $e\n$st');
     }
   }
 
   void _listenAll() {
-    final db = _db;
-    if (db == null) return;
-    for (final key in stateKeys) {
-      _subs.add(
-        db.collection('state').doc(key).snapshots().listen((snap) {
-          if (!snap.exists) return;
-          final data = snap.data();
-          if (data == null) return;
-          final updated = (data['updated'] as num?)?.toInt() ?? 0;
-          if (_lastPushMs != null && updated - _lastPushMs! < 2000) return;
-          if (!_remote.isClosed) _remote.add(null);
-        }),
-      );
-    }
-    _subs.add(
-      db.collection('state').doc(_usersDoc).snapshots().listen((_) {
-        if (!_remote.isClosed) _remote.add(null);
-      }),
-    );
+    _channel?.unsubscribe();
+    _channel = _client
+        .channel('implant-stock-state')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: SupabaseConfig.stateTable,
+          callback: (payload) {
+            final updated = _rowUpdated(payload.newRecord);
+            if (_lastPushMs != null && updated - _lastPushMs! < 2000) return;
+            if (!_remote.isClosed) _remote.add(null);
+          },
+        )
+        .subscribe();
+  }
+
+  int _rowUpdated(Map<String, dynamic>? row) {
+    if (row == null) return 0;
+    return (row['updated'] as num?)?.toInt() ?? 0;
   }
 
   Future<Map<String, dynamic>?> fetchDoc(String key) async {
-    if (!_ready || _db == null) return null;
+    if (!_ready) return null;
     try {
-      final snap = await _db!.collection('state').doc(key).get();
-      if (!snap.exists) return null;
-      return snap.data();
+      final row = await _client
+          .from(SupabaseConfig.stateTable)
+          .select('data, updated')
+          .eq('key', key)
+          .maybeSingle();
+      if (row == null) return null;
+      final data = row['data'];
+      if (data is! Map) return null;
+      final doc = Map<String, dynamic>.from(data);
+      doc['updated'] = _rowUpdated(row);
+      return doc;
     } catch (e) {
       if (kDebugMode) debugPrint('[CloudSync] fetch $key: $e');
       return null;
@@ -81,17 +98,20 @@ class CloudSync {
   }
 
   Future<void> pushDocs(Map<String, Map<String, dynamic>> docs) async {
-    if (!_ready || _db == null) return;
+    if (!_ready) return;
     final ts = DateTime.now().millisecondsSinceEpoch;
     _lastPushMs = ts;
     try {
-      final batch = _db!.batch();
-      for (final e in docs.entries) {
+      final rows = docs.entries.map((e) {
         final payload = Map<String, dynamic>.from(e.value);
         payload['updated'] = ts;
-        batch.set(_db!.collection('state').doc(e.key), payload);
-      }
-      await batch.commit();
+        return {
+          'key': e.key,
+          'data': payload,
+          'updated': ts,
+        };
+      }).toList();
+      await _client.from(SupabaseConfig.stateTable).upsert(rows);
     } catch (e) {
       if (kDebugMode) debugPrint('[CloudSync] push error: $e');
     }
@@ -102,9 +122,7 @@ class CloudSync {
     if (data == null) return null;
     final items = data['items'];
     if (items is! List) return null;
-    return items
-        .map((e) => Map<String, dynamic>.from(e as Map))
-        .toList();
+    return items.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
   Future<void> pushUsers(List<Map<String, dynamic>> users) async {
@@ -114,10 +132,8 @@ class CloudSync {
   }
 
   Future<void> dispose() async {
-    for (final s in _subs) {
-      await s.cancel();
-    }
-    _subs.clear();
+    await _channel?.unsubscribe();
+    _channel = null;
     await _remote.close();
   }
 }
